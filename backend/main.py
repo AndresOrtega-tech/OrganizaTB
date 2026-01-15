@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from database import supabase
 
 app = FastAPI()
 
@@ -6,6 +7,17 @@ app = FastAPI()
 def read_root():
     return {"message": "Hola Mundo desde FastAPI en Vercel"}
 
-@app.get("/health", tags=["Health"])
-def health_check():
-    return {"status": "ok"}
+@app.get("/tables", tags=["Health"])
+def list_tables():
+    try:
+        # Intentamos llamar a una función RPC 'get_tables'
+        response = supabase.rpc('get_tables', {}).execute()
+        return {"tables": response.data}
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": "No se pudieron listar las tablas. Asegúrate de haber creado la función RPC en Supabase.",
+            "details": str(e),
+            "solution": "Ejecuta este SQL en el Editor SQL de Supabase:",
+            "sql_command": "create or replace function get_tables() returns json language sql as $$ select json_agg(table_name) from information_schema.tables where table_schema = 'public'; $$;"
+        }

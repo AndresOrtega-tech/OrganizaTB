@@ -31,6 +31,8 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
+*.env
 .env*.local
 
 # typescript
@@ -77,3 +79,4 @@ venv.bak/
 .coverage
 htmlcov/
 .mypy_cache/
+
