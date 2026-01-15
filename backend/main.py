@@ -9,9 +9,14 @@ def read_root():
 
 @app.get("/tables", tags=["Health"])
 def list_tables():
+    if supabase is None:
+        return {
+            "status": "error",
+            "message": "Supabase no está configurado. Revisa las variables SUPABASE_URL y SUPABASE_ANON_KEY."
+        }
+
     try:
-        # Intentamos llamar a una función RPC 'get_tables'
-        response = supabase.rpc('get_tables', {}).execute()
+        response = supabase.rpc("get_tables", {}).execute()
         return {"tables": response.data}
     except Exception as e:
         return {

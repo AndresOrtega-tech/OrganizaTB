@@ -4,10 +4,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-url: str = os.environ.get("SUPABASE_URL")
-key: str = os.environ.get("ANON-KEY")
+url: str | None = os.environ.get("SUPABASE_URL")
+key: str | None = os.environ.get("SUPABASE_ANON_KEY") or os.environ.get("ANON-KEY")
 
-if not url or not key:
-    raise ValueError("Supabase URL and Key must be set in environment variables")
-
-supabase: Client = create_client(url, key)
+supabase: Client | None = None
+if url and key:
+    supabase = create_client(url, key)
