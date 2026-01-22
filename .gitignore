@@ -73,6 +73,7 @@ env/
 ENV/
 env.bak/
 venv.bak/
+venv312/
 
 # Python Testing
 .pytest_cache/
