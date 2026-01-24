@@ -35,7 +35,16 @@ El repositorio está organizado en dos carpetas principales:
    pip install -r requirements.txt
    ```
 
-4. Ejecuta el servidor de desarrollo:
+4. Configura la Base de Datos (Supabase):
+   - Crea un proyecto en Supabase.
+   - Copia el contenido de `backend/database.txt` y ejecútalo en el editor SQL de Supabase para crear las tablas y políticas.
+   - Crea un archivo `.env` en la carpeta `backend/` con tus credenciales:
+     ```
+     SUPABASE_URL=tu_url_de_supabase
+     SUPABASE_ANON_KEY=tu_anon_key_de_supabase
+     ```
+
+5. Ejecuta el servidor de desarrollo:
    ```powershell
    uvicorn main:app --reload
    ```
