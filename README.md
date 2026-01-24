@@ -42,6 +42,7 @@ El repositorio está organizado en dos carpetas principales:
      ```
      SUPABASE_URL=tu_url_de_supabase
      SUPABASE_ANON_KEY=tu_anon_key_de_supabase
+     SUPABASE_SERVICE_ROLE_KEY=tu_service_role_key_de_supabase # IMPORTANTE: Requerido para operaciones de escritura del backend
      ```
 
 5. Ejecuta el servidor de desarrollo:

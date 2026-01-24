@@ -13,9 +13,11 @@ logger = logging.getLogger(__name__)
 try:
     from backend.database import supabase
     from backend.auth.api import router as auth_router
+    from backend.tags.api import router as tags_router
 except ImportError:
     from database import supabase
     from auth.api import router as auth_router
+    from tags.api import router as tags_router
 
 # Configuración de Rate Limiting
 limiter = Limiter(key_func=get_remote_address)
@@ -48,6 +50,7 @@ app.add_middleware(
 
 # Incluir routers
 app.include_router(auth_router, prefix="/api", tags=["Authentication"])
+app.include_router(tags_router, prefix="/api/tags", tags=["Tags"])
 
 @app.get("/", tags=["Health"])
 def read_root():

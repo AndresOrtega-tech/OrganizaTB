@@ -65,16 +65,20 @@ The Expo dev server provides a QR code to scan with the Expo Go app for testing 
   - `api.py` - Authentication endpoints (register, login)
   - `schemas.py` - Pydantic models for request/response validation
   - `models.py` - Currently empty, reserved for future ORM models
+- `tags/` - Tags management module
+  - `api.py` - Endpoints for creating, listing, updating, and deleting tags
+  - `schemas.py` - Schemas for tag operations
 
 **Database Schema:**
 The database schema is defined in `backend/database.txt` and includes the following tables:
 - `profiles`: Stores user profile information (linked to auth.users).
-- `tags`: User-defined tags for tasks and notes.
+- `tags`: User-defined tags for tasks and notes (Unique constraint: user_id + name).
 - `tasks`: Task management with due dates, reminders, and completion status.
 - `notes`: User notes with optional media.
 - `task_tags` & `note_tags`: Many-to-many relationships for tags.
 - `improvement_insights`: Stores AI-generated insights for the user.
 - Includes RLS policies and a trigger (`handle_new_user`) for automatic profile creation.
+- **Security**: Row Level Security (RLS) is enabled on all tables. The backend uses `SUPABASE_SERVICE_ROLE_KEY` to bypass RLS for write operations where necessary (e.g., initial user creation), while `SUPABASE_ANON_KEY` is used for client-side operations.
 
 **Import Pattern:**
 The backend uses dual import paths to support both local development and Vercel deployment:
@@ -88,14 +92,17 @@ When adding new modules, follow this pattern to ensure compatibility in both env
 
 **Authentication Flow:**
 - User registration creates entries in both Supabase Auth and the `profiles` table
-- Login returns JWT tokens (access_token, refresh_token) from Supabase Auth
-- The `profiles` table should have a trigger to auto-create entries when auth users are created
-- Profile upsert in registration ensures data consistency even without triggers
+- Login returns JWT tokens (access_token, refresh_token) and user profile data (excluding sensitive auth IDs)
+- Authentication middleware (`dependencies.py`) verifies JWT tokens using Supabase Auth
+- **Avatar Update**: Dedicated endpoint `PATCH /api/auth/users/avatar` allows authenticated users to update their avatar URL (must be unique).
 
 **Configuration:**
 - Environment variables loaded from `backend/.env`
-- Required: `SUPABASE_URL`, `SUPABASE_ANON_KEY` (or `ANON_KEY`)
-- The database module gracefully handles missing credentials with warnings
+- Required: 
+  - `SUPABASE_URL`
+  - `SUPABASE_SERVICE_ROLE_KEY` (or `SERVICE_ROLE`) - Critical for backend write permissions
+  - `SUPABASE_ANON_KEY` (or `ANON_KEY`)
+- The database module prioritizes Service Role Key for backend operations to avoid RLS 401 errors during inserts.
 
 **Deployment:**
 - Configured for Vercel via `vercel.json`
@@ -146,6 +153,7 @@ Co-Authored-By: Warp <agent@warp.dev>
 ```
 SUPABASE_URL=your_supabase_url
 SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key # REQUIRED for backend inserts
 ```
 
 **Security Note:** Never commit the `.env` file or expose secrets. It's already in `.gitignore`.
@@ -164,7 +172,18 @@ Currently, no test framework is configured. When implementing tests:
   - Body: `{"email": "user@example.com", "password": "password", "full_name": "optional", "avatar_url": "optional"}`
 - `POST /api/auth/login` - User login
   - Body: `{"email": "user@example.com", "password": "password"}`
-  - Returns: JWT tokens and user info
+  - Returns: JWT tokens and user profile info (name, avatar, email)
+- `PATCH /api/auth/users/avatar` - Update Avatar
+  - Headers: `Authorization: Bearer <token>`
+  - Body: `{"avatar_url": "new_url"}`
+
+### Tags
+- `POST /api/tags/` - Create new tag
+  - Headers: `Authorization: Bearer <token>`
+  - Body: `{"name": "Tag Name", "color": "#RRGGBB"}`
+- `GET /api/tags/` - List user tags
+- `PATCH /api/tags/{id}` - Update tag
+- `DELETE /api/tags/{id}` - Delete tag
 
 ## Development Notes
 

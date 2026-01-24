@@ -22,3 +22,6 @@ class UserResponse(BaseModel):
     id: str
     email: EmailStr
     updated_at: str
+
+class UserAvatarUpdate(BaseModel):
+    avatar_url: str = Field(..., description="Nueva URL del avatar (debe ser única)")

@@ -83,12 +83,63 @@ ALTER TABLE public.task_tags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.note_tags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.improvement_insights ENABLE ROW LEVEL SECURITY;
 
--- Políticas: Solo el dueño accede a sus datos
-CREATE POLICY "Privacidad" ON public.profiles FOR ALL USING (auth.uid() = id);
-CREATE POLICY "Privacidad" ON public.tags FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY "Privacidad" ON public.tasks FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY "Privacidad" ON public.notes FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY "Privacidad" ON public.improvement_insights FOR ALL USING (auth.uid() = user_id);
+-- Políticas de Seguridad (RLS) Detalladas
+
+-- 1. PROFILES
+-- Permitir lectura y actualización del propio perfil. Insert se maneja por trigger.
+DROP POLICY IF EXISTS "Privacidad" ON public.profiles;
+CREATE POLICY "Profiles Select" ON public.profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Profiles Update" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+
+-- 2. TAGS
+DROP POLICY IF EXISTS "Privacidad" ON public.tags;
+-- Limpiar políticas anteriores si existen para evitar duplicados al recrear
+DROP POLICY IF EXISTS "Tags Privacidad Select" ON public.tags;
+DROP POLICY IF EXISTS "Tags Privacidad Update" ON public.tags;
+DROP POLICY IF EXISTS "Tags Privacidad Delete" ON public.tags;
+DROP POLICY IF EXISTS "Tags Privacidad Insert" ON public.tags;
+
+CREATE POLICY "Tags Select" ON public.tags FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Tags Update" ON public.tags FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Tags Delete" ON public.tags FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Tags Insert" ON public.tags FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- 3. TASKS
+DROP POLICY IF EXISTS "Privacidad" ON public.tasks;
+CREATE POLICY "Tasks Select" ON public.tasks FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Tasks Update" ON public.tasks FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Tasks Delete" ON public.tasks FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Tasks Insert" ON public.tasks FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- 4. NOTES
+DROP POLICY IF EXISTS "Privacidad" ON public.notes;
+CREATE POLICY "Notes Select" ON public.notes FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Notes Update" ON public.notes FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Notes Delete" ON public.notes FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Notes Insert" ON public.notes FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- 5. IMPROVEMENT INSIGHTS
+DROP POLICY IF EXISTS "Privacidad" ON public.improvement_insights;
+CREATE POLICY "Insights Select" ON public.improvement_insights FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Insights Update" ON public.improvement_insights FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Insights Delete" ON public.improvement_insights FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Insights Insert" ON public.improvement_insights FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- 6. TABLAS DE UNIÓN (Task Tags y Note Tags)
+-- Se valida la propiedad de la tarea/nota padre para permitir asociar tags.
+DROP POLICY IF EXISTS "TaskTags Policy" ON public.task_tags;
+CREATE POLICY "TaskTags Policy" ON public.task_tags FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.tasks WHERE id = task_tags.task_id AND user_id = auth.uid())
+) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.tasks WHERE id = task_tags.task_id AND user_id = auth.uid())
+);
+
+DROP POLICY IF EXISTS "NoteTags Policy" ON public.note_tags;
+CREATE POLICY "NoteTags Policy" ON public.note_tags FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.notes WHERE id = note_tags.note_id AND user_id = auth.uid())
+) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.notes WHERE id = note_tags.note_id AND user_id = auth.uid())
+);
 
 -- 9. TRIGGER: CREACIÓN AUTOMÁTICA DE PERFIL
 CREATE OR REPLACE FUNCTION public.handle_new_user()

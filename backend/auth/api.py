@@ -1,10 +1,12 @@
-from fastapi import APIRouter, HTTPException, status, Request
+from fastapi import APIRouter, HTTPException, status, Request, Depends
 try:
     from backend.database import supabase
-    from backend.auth.schemas import UserCreate, UserLogin, Token
+    from backend.auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate
+    from backend.auth.dependencies import get_current_user
 except ImportError:
     from database import supabase
-    from auth.schemas import UserCreate, UserLogin, Token
+    from auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate
+    from auth.dependencies import get_current_user
 import logging
 
 # Configurar logger
@@ -91,17 +93,76 @@ async def login(user: UserLogin, request: Request):
         if not auth_response.session:
             raise HTTPException(status_code=401, detail="Credenciales inválidas")
 
+        # Obtener datos del perfil para incluir en la respuesta
+        full_name = None
+        avatar_url = None
+        
+        try:
+            # Intentar obtener datos actualizados de la tabla profiles
+            profile_res = supabase.table("profiles").select("full_name, avatar_url").eq("id", auth_response.user.id).single().execute()
+            if profile_res.data:
+                full_name = profile_res.data.get("full_name")
+                avatar_url = profile_res.data.get("avatar_url")
+        except Exception as e:
+            logger.warning(f"No se pudo obtener datos extra del perfil: {e}")
+            # Fallback a metadatos de auth si falla la consulta a profiles
+            full_name = auth_response.user.user_metadata.get("full_name")
+            avatar_url = auth_response.user.user_metadata.get("avatar_url")
+
         return {
             "access_token": auth_response.session.access_token,
             "token_type": "bearer",
             "refresh_token": auth_response.session.refresh_token,
             "expires_in": auth_response.session.expires_in,
             "user": {
-                "id": auth_response.user.id,
-                "email": auth_response.user.email
+                # ID excluido según requerimiento
+                "email": auth_response.user.email,
+                "full_name": full_name,
+                "avatar_url": avatar_url
             }
         }
 
     except Exception as e:
         logger.error(f"Error en login: {str(e)}")
         raise HTTPException(status_code=400, detail="Error en la autenticación. Verifique sus credenciales.")
+
+
+@router.patch("/users/avatar", summary="Actualizar avatar del usuario")
+async def update_avatar(avatar_update: UserAvatarUpdate, user=Depends(get_current_user)):
+    """
+    Actualiza la URL del avatar del usuario autenticado.
+    Verifica que la URL sea única entre todos los usuarios.
+    """
+    try:
+        user_id = user.id
+        new_avatar_url = avatar_update.avatar_url
+
+        # 1. Verificar unicidad del avatar_url (si se requiere que sea único globalmente)
+        # Consultamos si existe algún perfil con ese avatar_url que NO sea el usuario actual
+        existing_avatar = supabase.table("profiles").select("id").eq("avatar_url", new_avatar_url).neq("id", user_id).execute()
+        
+        if existing_avatar.data and len(existing_avatar.data) > 0:
+            raise HTTPException(
+                status_code=400, 
+                detail="Esta URL de avatar ya está en uso por otro usuario."
+            )
+
+        # 2. Actualizar el perfil
+        update_response = supabase.table("profiles").update({
+            "avatar_url": new_avatar_url,
+            "updated_at": "now()"
+        }).eq("id", user_id).execute()
+
+        # Opcional: Actualizar metadatos del usuario en Supabase Auth si es necesario
+        # supabase.auth.update_user({"data": {"avatar_url": new_avatar_url}})
+
+        return {
+            "message": "Avatar actualizado exitosamente",
+            "avatar_url": new_avatar_url
+        }
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Error actualizando avatar: {e}")
+        raise HTTPException(status_code=400, detail=f"No se pudo actualizar el avatar: {str(e)}")
