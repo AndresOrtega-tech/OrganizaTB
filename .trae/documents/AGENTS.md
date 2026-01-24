@@ -68,12 +68,15 @@ The Expo dev server provides a QR code to scan with the Expo Go app for testing 
 - `tags/` - Tags management module
   - `api.py` - Endpoints for creating, listing, updating, and deleting tags
   - `schemas.py` - Schemas for tag operations
+- `tasks/` - Tasks management module
+  - `api.py` - CRUD endpoints for tasks and task-tag assignments
+  - `schemas.py` - Schemas for task creation, updates, and responses (including tags)
 
 **Database Schema:**
 The database schema is defined in `backend/database.txt` and includes the following tables:
 - `profiles`: Stores user profile information (linked to auth.users).
 - `tags`: User-defined tags for tasks and notes (Unique constraint: user_id + name).
-- `tasks`: Task management with due dates, reminders, and completion status.
+- `tasks`: Task management with due dates, reminders, completion status, and optional calendar integration (`calendar_event_id` = `id`).
 - `notes`: User notes with optional media.
 - `task_tags` & `note_tags`: Many-to-many relationships for tags.
 - `improvement_insights`: Stores AI-generated insights for the user.
@@ -184,6 +187,17 @@ Currently, no test framework is configured. When implementing tests:
 - `GET /api/tags/` - List user tags
 - `PATCH /api/tags/{id}` - Update tag
 - `DELETE /api/tags/{id}` - Delete tag
+
+### Tasks
+- `POST /api/tasks/` - Create new task
+  - Body: `{"title": "Task", "description": "...", "due_date": "ISO8601", "has_reminder": bool, "is_completed": bool}`
+- `GET /api/tasks/` - List user tasks (includes tags)
+- `GET /api/tasks/{id}` - Get task details (includes tags)
+- `PATCH /api/tasks/{id}` - Update task
+- `DELETE /api/tasks/{id}` - Delete task
+- `POST /api/tasks/tags` - Assign tags to task
+  - Body: `{"task_id": "uuid", "tag_ids": ["uuid1", "uuid2"]}`
+- `DELETE /api/tasks/{task_id}/tags/{tag_id}` - Remove tag from task
 
 ## Development Notes
 

@@ -9,6 +9,23 @@ El repositorio está organizado en dos carpetas principales:
 - `frontend/`: Código fuente de la aplicación móvil.
 - `backend/`: API REST y lógica del servidor.
 
+## Estado Actual del Backend
+
+El backend se encuentra en desarrollo activo y cuenta con las siguientes funcionalidades principales:
+
+1.  **Autenticación (Auth)**:
+    -   Registro y Login de usuarios (JWT).
+    -   Gestión de perfiles de usuario.
+    -   Actualización de Avatar (URL única).
+
+2.  **Etiquetas (Tags)**:
+    -   CRUD completo de etiquetas personalizadas (nombre, color).
+
+3.  **Tareas (Tasks)**:
+    -   Creación, lectura, actualización y eliminación de tareas.
+    -   Asignación de fechas límite, recordatorios y estado.
+    -   **Gestión de Etiquetas en Tareas**: Asignar y desvincular múltiples etiquetas a una tarea.
+
 ## Tecnologías
 
 - **Frontend**: React Native, Expo.
