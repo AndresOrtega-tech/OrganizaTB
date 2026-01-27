@@ -1,11 +1,11 @@
 from fastapi import APIRouter, HTTPException, status, Request, Depends
 try:
     from backend.database import supabase
-    from backend.auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate
+    from backend.auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate, CurrentUser
     from backend.auth.dependencies import get_current_user
 except ImportError:
     from database import supabase
-    from auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate
+    from auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate, CurrentUser
     from auth.dependencies import get_current_user
 import logging
 
@@ -125,6 +125,34 @@ async def login(user: UserLogin, request: Request):
     except Exception as e:
         logger.error(f"Error en login: {str(e)}")
         raise HTTPException(status_code=400, detail="Error en la autenticación. Verifique sus credenciales.")
+
+
+@router.get("/users/me", response_model=CurrentUser, summary="Obtener información del usuario autenticado")
+async def get_current_user_info(user=Depends(get_current_user)):
+    try:
+        full_name = None
+        avatar_url = None
+
+        try:
+            profile_res = supabase.table("profiles").select("full_name, avatar_url").eq("id", user.id).single().execute()
+            if profile_res.data:
+                full_name = profile_res.data.get("full_name")
+                avatar_url = profile_res.data.get("avatar_url")
+        except Exception as e:
+            logger.warning(f"No se pudo obtener datos extra del perfil: {e}")
+            full_name = user.user_metadata.get("full_name") if user.user_metadata else None
+            avatar_url = user.user_metadata.get("avatar_url") if user.user_metadata else None
+
+        return CurrentUser(
+            email=user.email,
+            full_name=full_name,
+            avatar_url=avatar_url,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error obteniendo información del usuario: {e}")
+        raise HTTPException(status_code=400, detail="No se pudo obtener la información del usuario.")
 
 
 @router.patch("/users/avatar", summary="Actualizar avatar del usuario")
