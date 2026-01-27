@@ -166,3 +166,35 @@ async def update_avatar(avatar_update: UserAvatarUpdate, user=Depends(get_curren
     except Exception as e:
         logger.error(f"Error actualizando avatar: {e}")
         raise HTTPException(status_code=400, detail=f"No se pudo actualizar el avatar: {str(e)}")
+
+
+@router.get("/users/me", summary="Obtener información del usuario autenticado")
+async def get_me(user=Depends(get_current_user)):
+    """
+    Retorna la información del usuario actualmente autenticado.
+    """
+    try:
+        # Consultar perfil completo en la tabla profiles
+        # Usamos maybe_single() por si no existe el perfil aún (aunque debería)
+        profile_res = supabase.table("profiles").select("*").eq("id", user.id).maybe_single().execute()
+        
+        user_data = {
+            "id": user.id,
+            "email": user.email,
+            "full_name": None,
+            "avatar_url": None
+        }
+        
+        if profile_res.data:
+            user_data["full_name"] = profile_res.data.get("full_name")
+            user_data["avatar_url"] = profile_res.data.get("avatar_url")
+        else:
+             # Fallback a metadatos de auth
+             user_data["full_name"] = user.user_metadata.get("full_name")
+             user_data["avatar_url"] = user.user_metadata.get("avatar_url")
+             
+        return user_data
+
+    except Exception as e:
+        logger.error(f"Error fetching user me: {e}")
+        raise HTTPException(status_code=400, detail="Error al obtener datos del usuario")

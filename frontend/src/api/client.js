@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from './config';
 
 /**
@@ -6,10 +7,16 @@ import { API_URL } from './config';
 const client = async (endpoint, options = {}) => {
   const url = `${API_URL}${endpoint}`;
   
+  const token = await AsyncStorage.getItem('userToken');
+
   const defaultHeaders = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   };
+
+  if (token) {
+    defaultHeaders['Authorization'] = `Bearer ${token}`;
+  }
 
   const config = {
     ...options,

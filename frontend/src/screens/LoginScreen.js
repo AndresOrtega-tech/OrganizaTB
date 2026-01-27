@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authApi } from '../api/auth';
 import Input from '../components/Input';
 import Button from '../components/Button';
@@ -20,7 +21,9 @@ const LoginScreen = ({ navigation }) => {
     try {
       const data = await authApi.login(email, password);
       
-      // Aquí podrías guardar el token, ej: await AsyncStorage.setItem('token', data.access_token);
+      if (data.access_token) {
+        await AsyncStorage.setItem('userToken', data.access_token);
+      }
       
       Alert.alert("¡Éxito!", "Has iniciado sesión correctamente");
       // 2. Si el login es exitoso, nos movemos a la pantalla de Inicio
@@ -34,43 +37,54 @@ const LoginScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>OrganizaT</Text>
-      
-      <Input 
-        placeholder="Correo electrónico" 
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
-      
-      <Input 
-        placeholder="Contraseña" 
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry 
-      />
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.title}>OrganizaT</Text>
+          
+          <Input 
+            placeholder="Correo electrónico" 
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+          
+          <Input 
+            placeholder="Contraseña" 
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry 
+          />
 
-      <Button 
-        title="Iniciar Sesión"
-        onPress={handleLogin}
-        loading={loading}
-      />
+          <Button 
+            title="Iniciar Sesión"
+            onPress={handleLogin}
+            loading={loading}
+          />
 
-      {/* 3. Nuevo botón para ir a la pantalla de Registro */}
-      <TouchableOpacity 
-        style={styles.registerLink} 
-        onPress={() => navigation.navigate('Register')}
-      >
-        <Text style={styles.linkText}>¿No tienes cuenta? Regístrate aquí</Text>
-      </TouchableOpacity>
-    </View>
+          <TouchableOpacity 
+            style={styles.registerLink} 
+            onPress={() => navigation.navigate('Register')}
+          >
+            <Text style={styles.linkText}>¿No tienes cuenta? Regístrate aquí</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 20, backgroundColor: '#fff' },
+  flex: { flex: 1 },
+  container: { flexGrow: 1, justifyContent: 'center', padding: 20, backgroundColor: '#fff' },
   title: { fontSize: 32, fontWeight: 'bold', textAlign: 'center', marginBottom: 40, color: '#2c3e50' },
   // Estilos para el enlace de registro
   registerLink: { marginTop: 20, alignItems: 'center' },

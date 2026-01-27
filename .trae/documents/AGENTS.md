@@ -114,13 +114,26 @@ When adding new modules, follow this pattern to ensure compatibility in both env
 ### Frontend Architecture
 
 **Current State:**
-The frontend is a minimal Expo template with basic setup in `App.js`. It's ready for feature development.
+The frontend is a functional Expo application with a complete authentication flow, task management (Create/Read), and profile management.
+
+**Implemented Screens:**
+- **LoginScreen**: Handles user authentication and token storage via `AsyncStorage`.
+- **RegisterScreen**: User registration.
+- **HomeScreen**: Displays task list with pull-to-refresh, handles 401 (session expiry) errors gracefully, and includes a FAB for creating tasks.
+- **CreateTaskScreen**: Form for new tasks using `DateTimePicker` and labeled Inputs.
+- **TaskDetailScreen**: Shows full task details including tags and status.
+- **ProfileScreen**: Allows viewing user info and updating avatar.
+
+**Key Components:**
+- `src/api/client.js`: Centralized fetch wrapper that handles Authorization headers and parses JSON responses.
+- `src/components/Input.js`: Reusable input component with support for labels and multiline text.
+- `src/components/Button.js`: Reusable button with loading state.
 
 **Configuration:**
-- Expo config in `app.json` with:
-  - New Architecture enabled
-  - Edge-to-edge Android support
-  - Cross-platform icon/splash screen assets
+- Expo config in `app.json` with New Architecture enabled.
+- Uses `@react-navigation/stack` for navigation.
+- Uses `@react-native-async-storage/async-storage` for session persistence.
+- Uses `@react-native-community/datetimepicker` for native date selection.
 
 ## Git Workflow
 
