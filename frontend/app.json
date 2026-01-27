@@ -26,7 +26,10 @@
       "favicon": "./assets/favicon.png"
     },
     "extra": {
-      "apiUrl": "https://organiza-t-git-development-andresortegatechs-projects.vercel.app/api"
+      "apiUrl": "https://organiza-t-git-development-andresortegatechs-projects.vercel.app/api",
+      "eas": {
+        "projectId": "2dc10e92-23a0-40b0-879f-89cfa241e550"
+      }
     }
   }
 }

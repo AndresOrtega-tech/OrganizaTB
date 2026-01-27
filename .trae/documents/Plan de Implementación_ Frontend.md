@@ -1,72 +1,53 @@
-# Plan de Implementación: Frontend (OrganizaT)
+# Plan de Implementación: Frontend Móvil (OrganizaT)
 
-Este documento detalla la estrategia de desarrollo para la interfaz de usuario de la aplicación OrganizaT, siguiendo la arquitectura de React Native (Expo) y comunicándose con el backend desplegado en Vercel.
+Este documento detalla la estrategia de desarrollo para la aplicación móvil OrganizaT, utilizando **React Native con Expo** y comunicándose con el backend desplegado en Vercel.
 
 ## 1. Stack Tecnológico
-- **Framework**: React Native + Expo.
-- **Estilos**: StyleSheet estándar de RN (Diseño responsivo y limpio).
-- **Estado/Data Fetching**: `useState`, `useEffect`, `useCallback` y `useFocusEffect` (gestión de recargas y foco).
-- **Navegación**: React Navigation (Stack Navigator).
-- **Almacenamiento Local**: `@react-native-async-storage/async-storage` (Tokens JWT).
-- **Componentes UI**:
-  - `@react-native-community/datetimepicker` (Selector de fecha nativo).
-  - Componentes propios: `Input`, `Button`.
-- **HTTP Client**: `fetch` wrapper personalizado (`client.js`) con manejo de headers y errores 401.
+- **Framework**: React Native + Expo (Desarrollo móvil multiplataforma).
+- **Estilos**: NativeWind (Tailwind CSS para React Native) o StyleSheet estándar.
+- **Navegación**: React Navigation (Stack & Tab Navigator).
+- **Estado/Data Fetching**: TanStack Query (React Query) o Context API.
+- **Iconos**: Expo Vector Icons (Lucide/Ionicons).
+- **HTTP Client**: Axios o Fetch API.
+- **Despliegue**: EAS (Expo Application Services).
 
 ## 2. Configuración de Entorno
-- La aplicación se comunica directamente con la API desplegada en Vercel.
-- Archivo `src/api/config.js` maneja la URL base.
+- Variable de entorno: `EXPO_PUBLIC_API_URL` (configurada en `app.json` o `.env`).
+- Backend URL: https://organiza-t-git-development-andresortegatechs-projects.vercel.app/api
 
-## 3. Estructura de Pantallas (Vistas)
+## 3. Estructura de Pantallas (Screens)
 
-### A. Autenticación [COMPLETADO]
-*   **Login**: Formulario de correo y contraseña. Guardado seguro de token.
-*   **Register**: Registro de nuevos usuarios.
-*   **Manejo de Sesión**: Auto-logout si el token expira (Error 401).
+### A. Autenticación (Stack Navigator)
+*   **LoginScreen**: Formulario de correo y contraseña.
+*   **RegisterScreen**: Registro de nuevos usuarios.
+*   **WelcomeScreen**: Pantalla inicial de carga/bienvenida.
 
-### B. Usuario [COMPLETADO]
-*   **Perfil de Usuario**:
-    *   Ver información del usuario (Nombre, Email, Avatar).
-    *   **Cambiar Avatar**: Funcionalidad para actualizar la URL del avatar.
-    *   **Logout**: Botón para cerrar sesión y limpiar storage.
+### B. App Principal (Tab Navigator)
+*   **HomeScreen**: Dashboard con resumen de tareas y accesos rápidos.
+*   **TasksScreen**: Listado completo de tareas con filtros (Tags, Fecha).
+*   **CreateTaskScreen**: Formulario para agregar nuevas tareas (Botón flotante central).
+*   **ProfileScreen**: Información del usuario y configuración.
 
-### C. Gestión de Tareas (Dashboard Principal) [EN PROGRESO]
-*   **HomeScreen**:
-    *   Lista de tareas con pull-to-refresh.
-    *   Visualización de estado (badges) y fecha de vencimiento.
-    *   Botón flotante (FAB) para crear tareas.
-*   **TaskDetailScreen**:
-    *   Vista detallada de una tarea (Descripción, Tags, Estado).
-*   **CreateTaskScreen**:
-    *   Formulario con validaciones.
-    *   Selector de fecha nativo (Date Picker).
-    *   Switch para recordatorios.
-    *   Etiquetas en inputs para mejor UX.
-
-### D. Formularios y Acciones
-*   **Agregar Tarea**: Completado.
-*   **Agregar Tag**: Pendiente.
-*   **Relacionar Tareas y Tags**: Visualización implementada, edición pendiente.
+### C. Modales y Pantallas Secundarias
+*   **TaskDetailScreen**: Vista detallada de una tarea.
+*   **EditProfileScreen**: Cambio de avatar y datos personales.
 
 ## 4. Componentes Clave (Reutilizables)
-*   `Input`: Campo de texto con soporte para etiquetas (Label) y multiline.
-*   `Button`: Botón estandarizado con estados de carga.
-*   `TagBadge`: Visualización de etiquetas en listas.
+*   `TaskCard`: Componente visual para mostrar una tarea en lista.
+*   `TagChip`: Pill visual para etiquetas.
+*   `CustomInput` / `CustomButton`: Elementos de UI consistentes.
+*   `ScreenLayout`: Wrapper para manejo de SafeArea y estilos base.
 
-## 5. Integración con Backend (Endpoints Implementados)
-*   **Auth**: Login, Register.
-*   **Users**: Get Me, Update Avatar.
-*   **Tasks**: Get All, Get By ID, Create.
+## 5. Integración con Backend
+*   **Auth**: `/auth/login`, `/users` (Registro).
+*   **Users**: `/users/me` (GET), `/users/avatar` (PATCH).
+*   **Tasks**: CRUD completo.
+*   **Tags**: Gestión de etiquetas.
 
-## 6. Pasos de Implementación (Estado Actual)
-1.  **Setup Inicial**: [COMPLETADO] Estructura base Expo y React Navigation.
-2.  **Auth Flow**: [COMPLETADO] Login, Registro, Logout y Persistencia de sesión.
-3.  **Layout Base**: [COMPLETADO] Stack Navigator y estilos base.
-4.  **CRUD Tareas**:
-    *   Lectura (Listado y Detalle): [COMPLETADO]
-    *   Creación: [COMPLETADO]
-    *   Actualización/Eliminación: [PENDIENTE]
-5.  **Gestión de Tags**: [PENDIENTE]
-6.  **Integración Tareas-Tags**: [PARCIAL] (Solo visualización).
-7.  **Vistas Avanzadas**: [PENDIENTE] (Filtros, Calendario).
-8.  **Perfil**: [COMPLETADO]
+## 6. Pasos de Implementación
+1.  **Configuración EAS**: Generar `eas.json` y configurar proyecto en Expo dashboard.
+2.  **Navegación**: Configurar Stack y Tab Navigators.
+3.  **Auth Flow**: Pantallas de Login/Registro conectadas al backend.
+4.  **Gestión de Tareas**: Listado y creación de tareas.
+5.  **Perfil**: Visualización y edición de usuario.
+6.  **Despliegue**: Configuración de builds para Android/iOS con EAS Build.
