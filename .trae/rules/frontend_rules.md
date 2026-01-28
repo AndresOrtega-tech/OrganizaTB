@@ -1,3 +1,7 @@
+---
+alwaysApply: false
+description: Cundo vayamos a modificar el frontend
+---
 # Reglas de Frontend (React Native / Expo)
 
 ## Stack Tecnológico

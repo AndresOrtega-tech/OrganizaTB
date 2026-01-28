@@ -1,3 +1,7 @@
+---
+alwaysApply: false
+description: Cuando vyaamos a modificar la estructura de las carpetas, o un cambio en el programa que sea grande
+---
 # Flujo de Desarrollo y Comandos
 
 ## Configuración de Entorno

@@ -1,3 +1,7 @@
+---
+alwaysApply: false
+description: Cuando se modique el backend, o en frontend tengamos que revisar algo del backend
+---
 # Reglas de Backend (FastAPI + Supabase)
 
 ## Stack Tecnológico
