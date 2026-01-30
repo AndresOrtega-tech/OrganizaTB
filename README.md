@@ -1,13 +1,10 @@
 # OrganizaT
 
-OrganizaT es una aplicación móvil desarrollada con **React Native (Expo)** y un backend en **Python (FastAPI)**.
+OrganizaT es una aplicación backend desarrollada con **Python (FastAPI)**.
 
 ## Estructura del Proyecto
 
-El repositorio está organizado en dos carpetas principales:
-
-- `frontend/`: Código fuente de la aplicación móvil.
-- `backend/`: API REST y lógica del servidor.
+El repositorio contiene el código fuente del backend.
 
 ## Estado Actual del Backend
 
@@ -28,7 +25,6 @@ El backend se encuentra en desarrollo activo y cuenta con las siguientes funcion
 
 ## Tecnologías
 
-- **Frontend**: React Native, Expo.
 - **Backend**: Python, FastAPI.
 - **Despliegue Backend**: Vercel.
 
@@ -36,57 +32,33 @@ El backend se encuentra en desarrollo activo y cuenta con las siguientes funcion
 
 ### Backend (API)
 
-1. Navega a la carpeta del backend:
-   ```powershell
-   cd backend
-   ```
-
-2. Crea y activa un entorno virtual (recomendado):
+1. Crea y activa un entorno virtual (recomendado):
    ```powershell
    python -m venv venv
    .\venv\Scripts\activate
    ```
 
-3. Instala las dependencias:
+2. Instala las dependencias:
    ```powershell
    pip install -r requirements.txt
    ```
 
-4. Configura la Base de Datos (Supabase):
+3. Configura la Base de Datos (Supabase):
    - Crea un proyecto en Supabase.
-   - Copia el contenido de `backend/database.txt` y ejecútalo en el editor SQL de Supabase para crear las tablas y políticas.
-   - Crea un archivo `.env` en la carpeta `backend/` con tus credenciales:
+   - Copia el contenido de `database.txt` y ejecútalo en el editor SQL de Supabase para crear las tablas y políticas.
+   - Crea un archivo `.env` en la raíz del proyecto con tus credenciales:
      ```
      SUPABASE_URL=tu_url_de_supabase
      SUPABASE_ANON_KEY=tu_anon_key_de_supabase
      SUPABASE_SERVICE_ROLE_KEY=tu_service_role_key_de_supabase # IMPORTANTE: Requerido para operaciones de escritura del backend
      ```
 
-5. Ejecuta el servidor de desarrollo:
+4. Ejecuta el servidor de desarrollo:
    ```powershell
    uvicorn main:app --reload
    ```
    - La API estará disponible en: `http://127.0.0.1:8000`
    - Documentación interactiva (Swagger): `http://127.0.0.1:8000/docs`
-
-### Frontend (App Móvil)
-
-1. Navega a la carpeta del frontend:
-   ```powershell
-   cd frontend
-   ```
-
-2. Instala las dependencias:
-   ```powershell
-   npm install
-   ```
-
-3. Inicia el servidor de Expo:
-   ```powershell
-   npx expo start
-   ```
-   - Escanea el código QR generado con la app **Expo Go** en tu dispositivo móvil.
-   - O presiona `a` para abrir en un emulador de Android (si está configurado).
 
 ## Flujo de Trabajo con Git
 

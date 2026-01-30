@@ -37,3 +37,6 @@ venv312/
 htmlcov/
 .mypy_cache/
 
+# Environment variables
+.env
+
