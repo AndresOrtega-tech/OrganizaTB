@@ -54,6 +54,7 @@ async def register_user(user: UserCreate, request: Request):
             "email": user.email,
             "password": user.password,
             "options": {
+                "emailRedirectTo": "https://web-app-organiza-t.vercel.app/",
                 "data": {
                     "full_name": user.full_name,
                     # Guardamos también en metadata como avatar_url para consistencia
