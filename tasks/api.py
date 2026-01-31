@@ -1,5 +1,5 @@
-from fastapi import APIRouter, HTTPException, status, Depends
-from typing import List
+from fastapi import APIRouter, HTTPException, status, Depends, Query
+from typing import List, Optional
 import uuid
 from datetime import datetime
 try:
@@ -51,14 +51,45 @@ async def create_task(task: TaskCreate, user=Depends(get_current_user)):
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/", response_model=List[TaskResponse], summary="Listar todas las tareas del usuario")
-async def list_tasks(user=Depends(get_current_user)):
+async def list_tasks(
+    user=Depends(get_current_user),
+    is_completed: Optional[bool] = Query(None, description="Filtrar por estado de completado"),
+    tag_ids: Optional[List[str]] = Query(None, description="Filtrar por etiquetas (OR)"),
+    sort_by: str = Query("updated_at", pattern="^(updated_at|due_date)$", description="Ordenar por fecha de actualización o vencimiento"),
+    order: str = Query("desc", pattern="^(asc|desc)$", description="Dirección del ordenamiento")
+):
     """
-    Obtiene todas las tareas del usuario autenticado, incluyendo sus etiquetas.
+    Obtiene todas las tareas del usuario autenticado, con opciones de filtrado y ordenamiento.
     """
     try:
         user_id = user.id
-        # Hacemos join con task_tags y tags para obtener las etiquetas
-        response = supabase.table("tasks").select("*, task_tags(tags(*))").eq("user_id", user_id).order("created_at", desc=True).execute()
+        
+        # Construir la query base
+        # Si filtramos por tags, necesitamos usar inner join (!inner) en task_tags para filtrar las tareas
+        select_query = "*, task_tags(tags(*))"
+        if tag_ids:
+            select_query = "*, task_tags!inner(tags(*))"
+            
+        query = supabase.table("tasks").select(select_query).eq("user_id", user_id)
+        
+        # Filtros
+        if is_completed is not None:
+            query = query.eq("is_completed", is_completed)
+            
+        if tag_ids:
+            query = query.in_("task_tags.tag_id", tag_ids)
+            
+        # Ordenamiento
+        # Se debe seleccionar uno de los dos: updated_at o due_date (controlado por sort_by)
+        is_desc = (order == "desc")
+        
+        if sort_by == "due_date":
+            # nulls_first=False pone los nulos al final (dependiendo de la DB, pero postgrest suele manejarlos)
+            query = query.order("due_date", desc=is_desc)
+        else:
+            query = query.order("updated_at", desc=is_desc)
+            
+        response = query.execute()
         
         tasks = response.data
         
@@ -70,8 +101,7 @@ async def list_tasks(user=Depends(get_current_user)):
                     if item.get("tags"):
                         tags_list.append(item["tags"])
             task["tags"] = tags_list
-            # Eliminamos la clave temporal del join si es necesario, 
-            # aunque Pydantic la ignorará si no está en el modelo, es más limpio quitarla.
+            # Eliminamos la clave temporal del join si es necesario
             if "task_tags" in task:
                 del task["task_tags"]
 
