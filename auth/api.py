@@ -33,9 +33,16 @@ async def register_user(user: UserCreate, request: Request):
             }
         })
 
+        if auth_response.user and not auth_response.session:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="El correo electrónico ya está registrado.")
+        
+        if auth_response.error:
+            logger.error(f"Error de Supabase Auth durante el registro: {auth_response.error.message}")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Error en el registro: {auth_response.error.message}")
+
         if not auth_response.user:
-            # Si no hay usuario en la respuesta, algo falló (ej. confirmación requerida pero no configurada)
-            raise HTTPException(status_code=400, detail="No se pudo registrar el usuario. Verifique los datos.")
+            # Esto podría ocurrir si hay un error pero no se propaga como auth_response.error
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo registrar el usuario. Verifique los datos.")
 
         # 2. La tabla 'profiles' debería actualizarse automáticamente mediante un Trigger en Supabase (recomendado)
         # Pero si se requiere inserción manual o actualización de la columna 'Correo':
@@ -69,14 +76,11 @@ async def register_user(user: UserCreate, request: Request):
             }
         }
 
+    except HTTPException:
+        raise # Re-raise HTTPException to be handled by FastAPI
     except Exception as e:
-        # Manejo de errores de Supabase (ej. usuario ya existe)
-        error_msg = str(e)
-        if "User already registered" in error_msg:
-            raise HTTPException(status_code=400, detail="El correo electrónico ya está registrado.")
-        
-        logger.error(f"Error en registro: {error_msg}")
-        raise HTTPException(status_code=400, detail=f"Error en el registro: {error_msg}")
+        logger.error(f"Error en registro: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error en el registro: {str(e)}")
 
 
 @router.post("/auth/login", response_model=Token, summary="Iniciar sesión")
