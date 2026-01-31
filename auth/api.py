@@ -62,9 +62,9 @@ async def register_user(user: UserCreate, request: Request):
             }
         })
 
-        if auth_response.error:
-            logger.error(f"Error de Supabase Auth durante el registro: {auth_response.error.message}")
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Error en el registro: {auth_response.error.message}")
+        # Nota: Las versiones recientes de supabase-py lanzan excepción en caso de error,
+        # por lo que si llegamos aquí, auth_response debería ser válido.
+        # Sin embargo, verificamos si tenemos usuario.
 
         if not auth_response.user:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo registrar el usuario. Verifique los datos.")
