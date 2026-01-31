@@ -11,7 +11,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=6)
     full_name: Optional[str] = None
-    avatar_url: Optional[str] = None
+    avatar: Optional[str] = None
 
 
 class Token(BaseModel):
@@ -29,10 +29,10 @@ class UserResponse(BaseModel):
 
 
 class UserAvatarUpdate(BaseModel):
-    avatar_url: str = Field(..., description="Nueva URL del avatar (debe ser única)")
+    avatar: str = Field(..., description="Nuevo nombre de avatar (debe ser único)")
 
 
 class CurrentUser(BaseModel):
     email: EmailStr
     full_name: Optional[str] = None
-    avatar_url: Optional[str] = None
+    avatar: Optional[str] = None

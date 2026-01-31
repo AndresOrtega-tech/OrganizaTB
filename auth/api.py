@@ -20,31 +20,56 @@ async def register_user(user: UserCreate, request: Request):
     Registra un nuevo usuario en Supabase Auth y crea su entrada en la tabla profiles.
     """
     try:
-        # 1. Crear usuario en Supabase Auth
-        # Supabase Auth se encarga del hashing seguro de contraseñas automáticamente.
+        errors = []
+
+        # 1. Verificar unicidad del email en la tabla profiles
+        try:
+            existing_email_profile = supabase.table("profiles").select("id").eq("Correo", user.email).maybe_single().execute()
+            if existing_email_profile.data:
+                errors.append("El correo electrónico ya está registrado.")
+        except Exception:
+            # Si falla la consulta (ej. error de conexión), continuamos pero logueamos si es necesario
+            pass
+
+        # 2. Verificar unicidad del avatar en la tabla profiles (si se proporciona)
+        if user.avatar:
+            try:
+                # Mapeo: Consultamos la columna 'avatar_url' usando el valor de 'avatar'
+                existing_avatar_profile = supabase.table("profiles").select("id").eq("avatar_url", user.avatar).maybe_single().execute()
+                if existing_avatar_profile.data:
+                    errors.append("El nombre de avatar ya está en uso.")
+            except Exception as e:
+                # Importante: Si la columna no existe, esto lanzará error. 
+                # Lo capturamos para no romper todo el registro, pero deberíamos alertar.
+                logger.error(f"Error verificando avatar: {e}")
+                # Opcional: Agregar error genérico a la lista si es crítico
+                # errors.append("Error verificando disponibilidad del avatar.")
+                pass
+        
+        if errors:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=", ".join(errors))
+
+        # 3. Crear usuario en Supabase Auth
         auth_response = supabase.auth.sign_up({
             "email": user.email,
             "password": user.password,
             "options": {
                 "data": {
                     "full_name": user.full_name,
-                    "avatar_url": user.avatar_url
+                    # Guardamos también en metadata como avatar_url para consistencia
+                    "avatar_url": user.avatar
                 }
             }
         })
 
-        if auth_response.user and not auth_response.session:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="El correo electrónico ya está registrado.")
-        
         if auth_response.error:
             logger.error(f"Error de Supabase Auth durante el registro: {auth_response.error.message}")
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Error en el registro: {auth_response.error.message}")
 
         if not auth_response.user:
-            # Esto podría ocurrir si hay un error pero no se propaga como auth_response.error
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo registrar el usuario. Verifique los datos.")
 
-        # 2. La tabla 'profiles' debería actualizarse automáticamente mediante un Trigger en Supabase (recomendado)
+        # 4. La tabla 'profiles' debería actualizarse automáticamente mediante un Trigger en Supabase (recomendado)
         # Pero si se requiere inserción manual o actualización de la columna 'Correo':
         # Nota: El ID del usuario en profiles debe coincidir con auth.users.id
         
@@ -52,13 +77,14 @@ async def register_user(user: UserCreate, request: Request):
         try:
             profile_data = {
                 "id": auth_response.user.id,
-                "Correo": user.email, # Columna solicitada 'Corrreo'
+                "Correo": user.email, # Columna solicitada 'Correo'
                 "updated_at": "now()"
             }
             if user.full_name:
                 profile_data["full_name"] = user.full_name
-            if user.avatar_url:
-                profile_data["avatar_url"] = user.avatar_url
+            if user.avatar:
+                # Mapeo: Guardamos en la columna 'avatar_url'
+                profile_data["avatar_url"] = user.avatar
 
             # Upsert para manejar tanto si el trigger lo creó como si no
             supabase.table("profiles").upsert(profile_data).execute()
@@ -99,19 +125,20 @@ async def login(user: UserLogin, request: Request):
 
         # Obtener datos del perfil para incluir en la respuesta
         full_name = None
-        avatar_url = None
+        avatar = None
         
         try:
-            # Intentar obtener datos actualizados de la tabla profiles
+            # Intentar obtener datos actualizados de la tabla profiles (columna avatar_url)
             profile_res = supabase.table("profiles").select("full_name, avatar_url").eq("id", auth_response.user.id).single().execute()
             if profile_res.data:
                 full_name = profile_res.data.get("full_name")
-                avatar_url = profile_res.data.get("avatar_url")
+                # Mapeo: Asignamos avatar_url de DB a la variable avatar
+                avatar = profile_res.data.get("avatar_url")
         except Exception as e:
             logger.warning(f"No se pudo obtener datos extra del perfil: {e}")
             # Fallback a metadatos de auth si falla la consulta a profiles
             full_name = auth_response.user.user_metadata.get("full_name")
-            avatar_url = auth_response.user.user_metadata.get("avatar_url")
+            avatar = auth_response.user.user_metadata.get("avatar_url")
 
         return {
             "access_token": auth_response.session.access_token,
@@ -122,7 +149,7 @@ async def login(user: UserLogin, request: Request):
                 # ID excluido según requerimiento
                 "email": auth_response.user.email,
                 "full_name": full_name,
-                "avatar_url": avatar_url
+                "avatar": avatar
             }
         }
 
@@ -135,22 +162,23 @@ async def login(user: UserLogin, request: Request):
 async def get_current_user_info(user=Depends(get_current_user)):
     try:
         full_name = None
-        avatar_url = None
+        avatar = None
 
         try:
+            # Mapeo: Consultamos avatar_url
             profile_res = supabase.table("profiles").select("full_name, avatar_url").eq("id", user.id).single().execute()
             if profile_res.data:
                 full_name = profile_res.data.get("full_name")
-                avatar_url = profile_res.data.get("avatar_url")
+                avatar = profile_res.data.get("avatar_url")
         except Exception as e:
             logger.warning(f"No se pudo obtener datos extra del perfil: {e}")
             full_name = user.user_metadata.get("full_name") if user.user_metadata else None
-            avatar_url = user.user_metadata.get("avatar_url") if user.user_metadata else None
+            avatar = user.user_metadata.get("avatar_url") if user.user_metadata else None
 
         return CurrentUser(
             email=user.email,
             full_name=full_name,
-            avatar_url=avatar_url,
+            avatar=avatar,
         )
     except HTTPException:
         raise
@@ -162,35 +190,37 @@ async def get_current_user_info(user=Depends(get_current_user)):
 @router.patch("/users/avatar", summary="Actualizar avatar del usuario")
 async def update_avatar(avatar_update: UserAvatarUpdate, user=Depends(get_current_user)):
     """
-    Actualiza la URL del avatar del usuario autenticado.
-    Verifica que la URL sea única entre todos los usuarios.
+    Actualiza el avatar del usuario autenticado.
+    Verifica que el avatar sea único entre todos los usuarios.
     """
     try:
         user_id = user.id
-        new_avatar_url = avatar_update.avatar_url
+        new_avatar = avatar_update.avatar
 
-        # 1. Verificar unicidad del avatar_url (si se requiere que sea único globalmente)
-        # Consultamos si existe algún perfil con ese avatar_url que NO sea el usuario actual
-        existing_avatar = supabase.table("profiles").select("id").eq("avatar_url", new_avatar_url).neq("id", user_id).execute()
+        # 1. Verificar unicidad del avatar (si se requiere que sea único globalmente)
+        # Consultamos si existe algún perfil con ese avatar que NO sea el usuario actual
+        # Mapeo: Consultamos avatar_url
+        existing_avatar = supabase.table("profiles").select("id").eq("avatar_url", new_avatar).neq("id", user_id).execute()
         
         if existing_avatar.data and len(existing_avatar.data) > 0:
             raise HTTPException(
                 status_code=400, 
-                detail="Esta URL de avatar ya está en uso por otro usuario."
+                detail="Este nombre de avatar ya está en uso por otro usuario."
             )
 
         # 2. Actualizar el perfil
+        # Mapeo: Actualizamos avatar_url
         update_response = supabase.table("profiles").update({
-            "avatar_url": new_avatar_url,
+            "avatar_url": new_avatar,
             "updated_at": "now()"
         }).eq("id", user_id).execute()
 
         # Opcional: Actualizar metadatos del usuario en Supabase Auth si es necesario
-        # supabase.auth.update_user({"data": {"avatar_url": new_avatar_url}})
+        # supabase.auth.update_user({"data": {"avatar_url": new_avatar}})
 
         return {
             "message": "Avatar actualizado exitosamente",
-            "avatar_url": new_avatar_url
+            "avatar": new_avatar
         }
 
     except HTTPException as he:
@@ -214,16 +244,17 @@ async def get_me(user=Depends(get_current_user)):
             "id": user.id,
             "email": user.email,
             "full_name": None,
-            "avatar_url": None
+            "avatar": None
         }
         
         if profile_res.data:
             user_data["full_name"] = profile_res.data.get("full_name")
-            user_data["avatar_url"] = profile_res.data.get("avatar_url")
+            # Mapeo: avatar_url -> avatar
+            user_data["avatar"] = profile_res.data.get("avatar_url")
         else:
              # Fallback a metadatos de auth
              user_data["full_name"] = user.user_metadata.get("full_name")
-             user_data["avatar_url"] = user.user_metadata.get("avatar_url")
+             user_data["avatar"] = user.user_metadata.get("avatar_url")
              
         return user_data
 
