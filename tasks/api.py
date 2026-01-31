@@ -54,18 +54,19 @@ async def create_task(task: TaskCreate, user=Depends(get_current_user)):
 async def list_tasks(
     user=Depends(get_current_user),
     is_completed: Optional[bool] = Query(None, description="Filtrar por estado de completado"),
-    tag_ids: Optional[List[str]] = Query(None, description="Filtrar por etiquetas (OR)"),
+    tag_ids: Optional[List[str]] = Query(None, description="Filtrar por etiquetas (AND: la tarea debe tener TODAS las etiquetas seleccionadas)"),
     sort_by: str = Query("updated_at", pattern="^(updated_at|due_date)$", description="Ordenar por fecha de actualización o vencimiento"),
     order: str = Query("desc", pattern="^(asc|desc)$", description="Dirección del ordenamiento")
 ):
     """
     Obtiene todas las tareas del usuario autenticado, con opciones de filtrado y ordenamiento.
+    Si se proporcionan múltiples etiquetas, se filtran las tareas que contengan TODAS ellas.
     """
     try:
         user_id = user.id
         
         # Construir la query base
-        # Si filtramos por tags, necesitamos usar inner join (!inner) en task_tags para filtrar las tareas
+        # Si filtramos por tags, necesitamos usar inner join (!inner) en task_tags para filtrar las tareas iniciales (candidatas)
         select_query = "*, task_tags(tags(*))"
         if tag_ids:
             select_query = "*, task_tags!inner(tags(*))"
@@ -77,14 +78,13 @@ async def list_tasks(
             query = query.eq("is_completed", is_completed)
             
         if tag_ids:
+            # Primero filtramos tareas que tengan AL MENOS UNO de los tags (OR a nivel de DB)
             query = query.in_("task_tags.tag_id", tag_ids)
             
         # Ordenamiento
-        # Se debe seleccionar uno de los dos: updated_at o due_date (controlado por sort_by)
         is_desc = (order == "desc")
         
         if sort_by == "due_date":
-            # nulls_first=False pone los nulos al final (dependiendo de la DB, pero postgrest suele manejarlos)
             query = query.order("due_date", desc=is_desc)
         else:
             query = query.order("updated_at", desc=is_desc)
@@ -93,19 +93,35 @@ async def list_tasks(
         
         tasks = response.data
         
-        # Procesar la respuesta para aplanar la estructura de tags
+        # Procesar y filtrar (AND logic)
+        final_tasks = []
+        required_tag_ids = set(tag_ids) if tag_ids else set()
+
         for task in tasks:
             tags_list = []
+            found_tag_ids = set()
+            
             if "task_tags" in task:
                 for item in task["task_tags"]:
                     if item.get("tags"):
-                        tags_list.append(item["tags"])
+                        tag_data = item["tags"]
+                        tags_list.append(tag_data)
+                        found_tag_ids.add(str(tag_data.get("id")))
+
             task["tags"] = tags_list
-            # Eliminamos la clave temporal del join si es necesario
+            # Eliminamos la clave temporal del join
             if "task_tags" in task:
                 del task["task_tags"]
+            
+            # Aplicar filtro AND estricto
+            if tag_ids:
+                # Solo incluimos la tarea si tiene TODOS los tags solicitados
+                if required_tag_ids.issubset(found_tag_ids):
+                    final_tasks.append(task)
+            else:
+                final_tasks.append(task)
 
-        return tasks
+        return final_tasks
     except Exception as e:
         logger.error(f"Error listando tareas: {e}")
         raise HTTPException(status_code=400, detail=str(e))
