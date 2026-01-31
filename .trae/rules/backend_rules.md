@@ -1,6 +1,5 @@
 ---
-alwaysApply: false
-description: Cuando se modique el backend, o en frontend tengamos que revisar algo del backend
+alwaysApply: true
 ---
 # Reglas de Backend (FastAPI + Supabase)
 
@@ -54,3 +53,23 @@ backend/
 - **Autenticación:** Tokens JWT (Bearer) en headers.
 - **Rutas:** Prefijo `/api` para todos los endpoints.
 - **Variables de Entorno:** NUNCA hardcodear credenciales. Usar `os.getenv` o `python-dotenv`.
+
+## Patrones de Implementación Específicos
+
+### 1. Mapeo API ↔ DB (Campos Discrepantes)
+Si el API expone un campo con nombre diferente al de la BD (ej. `avatar` vs `avatar_url`):
+- **Lectura:** Consultar el campo de BD (`avatar_url`) y asignarlo manualmente a la variable del modelo de respuesta (`avatar`).
+- **Escritura:** Recibir el campo del modelo (`avatar`) e insertarlo en la columna correcta de BD (`avatar_url`).
+- **Validación:** Si se requiere unicidad, consultar la columna de BD antes de insertar.
+
+### 2. Manejo de Errores Supabase (Auth)
+- **Versiones Recientes:** `supabase.auth.sign_up` y similares lanzan excepciones (`AuthApiError`) en lugar de devolver un objeto con atributo `.error`.
+- **Patrón:** Usar bloques `try-except` para capturar fallos en autenticación. Validar éxito verificando si `response.user` no es nulo.
+
+### 3. Filtrado Avanzado (Tags y Relaciones)
+- **Lógica AND en Relaciones M2M:**
+  - Supabase `in_` funciona como OR.
+  - Para filtrar elementos que tengan **TODOS** los tags (AND):
+    1. Usar `!inner` en la query para filtrar candidatos (OR).
+    2. Realizar el filtrado estricto (AND) en memoria (Python) verificando `required_tags.issubset(found_tags)`.
+- **Deprecaciones:** Usar `pattern` en lugar de `regex` en `Query` de FastAPI.
