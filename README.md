@@ -21,7 +21,13 @@ El backend se encuentra en desarrollo activo y cuenta con las siguientes funcion
 3.  **Tareas (Tasks)**:
     -   Creación, lectura, actualización y eliminación de tareas.
     -   Asignación de fechas límite, recordatorios y estado.
+    -   **Filtros Avanzados**: Filtrado por estado, fechas y etiquetas (lógica AND).
     -   **Gestión de Etiquetas en Tareas**: Asignar y desvincular múltiples etiquetas a una tarea.
+
+4.  **Notas (Notes)**:
+    -   Creación, lectura, edición y eliminación de notas de texto.
+    -   **Organización**: Sistema de archivado de notas.
+    -   **Etiquetado**: Asignación de múltiples etiquetas a notas para categorización.
 
 ## Tecnologías
 

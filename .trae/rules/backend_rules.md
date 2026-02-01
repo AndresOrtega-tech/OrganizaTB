@@ -25,6 +25,7 @@ backend/
 │   └── schemas.py
 ├── tags/           # Módulo de Etiquetas
 ├── tasks/          # Módulo de Tareas
+├── notes/          # Módulo de Notas
 ├── database.py     # Cliente Supabase
 └── main.py         # App Entry Point
 ```
