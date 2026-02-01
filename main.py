@@ -15,11 +15,13 @@ try:
     from backend.auth.api import router as auth_router
     from backend.tags.api import router as tags_router
     from backend.tasks.api import router as tasks_router
+    from backend.notes.api import router as notes_router
 except ImportError:
     from database import supabase
     from auth.api import router as auth_router
     from tags.api import router as tags_router
     from tasks.api import router as tasks_router
+    from notes.api import router as notes_router
 
 # Configuración de Rate Limiting
 limiter = Limiter(key_func=get_remote_address)
@@ -54,6 +56,7 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/api", tags=["Authentication"])
 app.include_router(tags_router, prefix="/api/tags", tags=["Tags"])
 app.include_router(tasks_router, prefix="/api/tasks", tags=["Tasks"])
+app.include_router(notes_router, prefix="/api/notes", tags=["Notes"])
 
 @app.get("/", tags=["Health"])
 def read_root():
