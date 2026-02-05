@@ -9,7 +9,7 @@ except ImportError:
 
 class TaskBase(BaseModel):
     title: str = Field(..., min_length=1, description="Título de la tarea")
-    description: Optional[str] = Field(None, description="Descripción detallada de la tarea")
+    description: Optional[str] = Field(None, description="Descripción detallada de la tarea", max_length=500)
     due_date: Optional[datetime] = Field(None, description="Fecha límite de la tarea")
     has_reminder: bool = Field(False, description="Indica si la tarea tiene recordatorio activo")
     is_completed: bool = Field(False, description="Estado de completado de la tarea")
@@ -21,7 +21,7 @@ class TaskCreate(TaskBase):
 
 class TaskUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1)
-    description: Optional[str] = None
+    description: Optional[str] = Field(None, max_length=500)
     due_date: Optional[datetime] = None
     is_completed: Optional[bool] = None
     has_reminder: Optional[bool] = None

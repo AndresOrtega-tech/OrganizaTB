@@ -1,11 +1,11 @@
 from fastapi import APIRouter, HTTPException, status, Request, Depends
 try:
     from backend.database import supabase
-    from backend.auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate, CurrentUser
+    from backend.auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate, CurrentUser, UserPasswordUpdate
     from backend.auth.dependencies import get_current_user
 except ImportError:
     from database import supabase
-    from auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate, CurrentUser
+    from auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate, CurrentUser, UserPasswordUpdate
     from auth.dependencies import get_current_user
 import logging
 
@@ -229,6 +229,28 @@ async def update_avatar(avatar_update: UserAvatarUpdate, user=Depends(get_curren
     except Exception as e:
         logger.error(f"Error actualizando avatar: {e}")
         raise HTTPException(status_code=400, detail=f"No se pudo actualizar el avatar: {str(e)}")
+
+
+@router.patch("/users/password", summary="Cambiar contraseña")
+async def change_password(password_update: UserPasswordUpdate, user=Depends(get_current_user)):
+    """
+    Permite al usuario autenticado cambiar su contraseña.
+    """
+    try:
+        # Actualizar contraseña en Supabase Auth
+        # update_user actualiza el usuario asociado al token JWT actual
+        response = supabase.auth.update_user({
+            "password": password_update.password
+        })
+
+        if not response.user:
+             raise HTTPException(status_code=400, detail="No se pudo actualizar la contraseña.")
+
+        return {"message": "Contraseña actualizada exitosamente"}
+
+    except Exception as e:
+        logger.error(f"Error cambiando contraseña: {e}")
+        raise HTTPException(status_code=400, detail=f"Error cambiando contraseña: {str(e)}")
 
 
 @router.get("/users/me", summary="Obtener información del usuario autenticado")
