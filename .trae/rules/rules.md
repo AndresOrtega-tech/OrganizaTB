@@ -13,6 +13,7 @@
 
 ## Criterios de Solución Eficiente
 - Código fácil de leer y entender.
+- **Service-First:** La lógica de negocio siempre va en una capa de servicio, nunca acoplada al controlador/vista.
 - Modular y reutilizable.
 - Estructura de carpetas simple (máx 3 niveles para proyectos simples).
 - Cumplimiento de objetivos sin complejidad innecesaria.
