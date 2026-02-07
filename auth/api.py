@@ -1,11 +1,11 @@
 from fastapi import APIRouter, HTTPException, status, Request, Depends
 try:
     from backend.database import supabase
-    from backend.auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate, CurrentUser, UserPasswordUpdate
+    from backend.auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate, CurrentUser, UserPasswordUpdate, UserPasswordResetRequest
     from backend.auth.dependencies import get_current_user
 except ImportError:
     from database import supabase
-    from auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate, CurrentUser, UserPasswordUpdate
+    from auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate, CurrentUser, UserPasswordUpdate, UserPasswordResetRequest
     from auth.dependencies import get_current_user
 import logging
 
@@ -231,26 +231,24 @@ async def update_avatar(avatar_update: UserAvatarUpdate, user=Depends(get_curren
         raise HTTPException(status_code=400, detail=f"No se pudo actualizar el avatar: {str(e)}")
 
 
-@router.patch("/users/password", summary="Cambiar contraseña")
-async def change_password(password_update: UserPasswordUpdate, user=Depends(get_current_user)):
+@router.post("/users/password/reset", summary="Solicitar cambio de contraseña")
+async def request_password_reset(reset_request: UserPasswordResetRequest):
     """
-    Permite al usuario autenticado cambiar su contraseña.
+    Envía un correo al usuario especificado para restablecer su contraseña.
+    No requiere autenticación previa.
     """
     try:
-        # Actualizar contraseña en Supabase Auth
-        # update_user actualiza el usuario asociado al token JWT actual
-        response = supabase.auth.update_user({
-            "password": password_update.password
+        # Enviar correo de restablecimiento
+        # La redirección apunta a la app web para que el usuario ingrese su nueva clave
+        supabase.auth.reset_password_email(reset_request.email, options={
+            "redirect_to": "https://web-app-organiza-t.vercel.app/update-password"
         })
 
-        if not response.user:
-             raise HTTPException(status_code=400, detail="No se pudo actualizar la contraseña.")
-
-        return {"message": "Contraseña actualizada exitosamente"}
+        return {"message": "Si el correo está registrado, se ha enviado un enlace para restablecer tu contraseña."}
 
     except Exception as e:
-        logger.error(f"Error cambiando contraseña: {e}")
-        raise HTTPException(status_code=400, detail=f"Error cambiando contraseña: {str(e)}")
+        logger.error(f"Error solicitando cambio de contraseña: {e}")
+        raise HTTPException(status_code=400, detail=f"Error solicitando cambio de contraseña: {str(e)}")
 
 
 @router.get("/users/me", summary="Obtener información del usuario autenticado")

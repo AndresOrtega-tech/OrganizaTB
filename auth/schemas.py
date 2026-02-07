@@ -36,6 +36,10 @@ class UserPasswordUpdate(BaseModel):
     password: str = Field(..., min_length=6, description="Nueva contraseña")
 
 
+class UserPasswordResetRequest(BaseModel):
+    email: EmailStr = Field(..., description="Correo electrónico para enviar el enlace de recuperación")
+
+
 class CurrentUser(BaseModel):
     email: EmailStr
     full_name: Optional[str] = None
