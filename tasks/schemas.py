@@ -16,6 +16,15 @@ class ReminderResponse(BaseModel):
     remind_at: datetime
     status: str
 
+class NoteSummary(BaseModel):
+    id: str
+    title: Optional[str] = None
+
+class EventSummary(BaseModel):
+    id: str
+    title: str
+    start_time: datetime
+
 class TaskBase(BaseModel):
     title: str = Field(..., min_length=1, description="Título de la tarea")
     description: Optional[str] = Field(None, description="Descripción detallada de la tarea", max_length=500)
@@ -52,6 +61,8 @@ class TaskResponse(TaskBase):
     created_at: datetime
     updated_at: datetime
     tags: List[TagResponse] = []
+    notes: List[NoteSummary] = []
+    events: List[EventSummary] = []
     reminders_data: List[ReminderResponse] = Field(default=[], description="Lista de recordatorios generados")
     has_reminder: bool = False
 

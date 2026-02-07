@@ -1,13 +1,15 @@
 from fastapi import APIRouter, HTTPException, status, Request, Depends
+from fastapi.security import HTTPAuthorizationCredentials
 try:
-    from backend.database import supabase
+    from backend.database import supabase, url as supabase_url, key as supabase_key
     from backend.auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate, CurrentUser, UserPasswordUpdate, UserPasswordResetRequest
-    from backend.auth.dependencies import get_current_user
+    from backend.auth.dependencies import get_current_user, security
 except ImportError:
-    from database import supabase
+    from database import supabase, url as supabase_url, key as supabase_key
     from auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate, CurrentUser, UserPasswordUpdate, UserPasswordResetRequest
-    from auth.dependencies import get_current_user
+    from auth.dependencies import get_current_user, security
 import logging
+import httpx
 
 # Configurar logger
 logger = logging.getLogger(__name__)
@@ -229,6 +231,42 @@ async def update_avatar(avatar_update: UserAvatarUpdate, user=Depends(get_curren
     except Exception as e:
         logger.error(f"Error actualizando avatar: {e}")
         raise HTTPException(status_code=400, detail=f"No se pudo actualizar el avatar: {str(e)}")
+
+
+@router.patch("/users/password", summary="Cambiar contraseña (Usuario autenticado)")
+async def update_password(
+    password_update: UserPasswordUpdate, 
+    user=Depends(get_current_user),
+    token_data: HTTPAuthorizationCredentials = Depends(security)
+):
+    """
+    Permite a un usuario autenticado cambiar su contraseña.
+    Requiere que el usuario haya iniciado sesión (JWT).
+    """
+    try:
+        # Usamos httpx para hacer una petición directa a la API de Auth de Supabase
+        # Esto nos permite actuar como el usuario usando su token bearer.
+        token = token_data.credentials
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.put(
+                f"{supabase_url}/auth/v1/user",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "apikey": supabase_key,
+                    "Content-Type": "application/json"
+                },
+                json={"password": password_update.password}
+            )
+            
+            if response.status_code != 200:
+                raise Exception(f"Error Supabase Auth: {response.text}")
+
+        return {"message": "Contraseña actualizada exitosamente"}
+
+    except Exception as e:
+        logger.error(f"Error actualizando contraseña: {e}")
+        raise HTTPException(status_code=400, detail=f"No se pudo actualizar la contraseña: {str(e)}")
 
 
 @router.post("/users/password/reset", summary="Solicitar cambio de contraseña")

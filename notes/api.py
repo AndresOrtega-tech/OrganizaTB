@@ -49,9 +49,9 @@ async def list_notes(
     try:
         user_id = user.id
         
-        select_query = "*, note_tags(tags(*))"
+        select_query = "*, note_tags(tags(*)), task_notes(tasks(id, title, is_completed)), event_notes(events(id, title, start_time))"
         if tag_ids:
-            select_query = "*, note_tags!inner(tags(*))"
+            select_query = "*, note_tags!inner(tags(*)), task_notes(tasks(id, title, is_completed)), event_notes(events(id, title, start_time))"
             
         query = supabase.table("notes").select(select_query).eq("user_id", user_id)
         
@@ -86,6 +86,24 @@ async def list_notes(
             if "note_tags" in note:
                 del note["note_tags"]
             
+            # Process linked tasks
+            tasks_list = []
+            if "task_notes" in note:
+                for item in note["task_notes"]:
+                    if item.get("tasks"):
+                        tasks_list.append(item["tasks"])
+                del note["task_notes"]
+            note["tasks"] = tasks_list
+
+            # Process linked events
+            events_list = []
+            if "event_notes" in note:
+                for item in note["event_notes"]:
+                    if item.get("events"):
+                        events_list.append(item["events"])
+                del note["event_notes"]
+            note["events"] = events_list
+
             if tag_ids:
                 if required_tag_ids.issubset(found_tag_ids):
                     final_notes.append(note)
@@ -101,7 +119,7 @@ async def list_notes(
 async def get_note(note_id: str, user=Depends(get_current_user)):
     try:
         user_id = user.id
-        response = supabase.table("notes").select("*, note_tags(tags(*))").eq("id", note_id).eq("user_id", user_id).execute()
+        response = supabase.table("notes").select("*, note_tags(tags(*)), task_notes(tasks(id, title, is_completed)), event_notes(events(id, title, start_time))").eq("id", note_id).eq("user_id", user_id).execute()
         
         if not response.data:
             raise HTTPException(status_code=404, detail="Nota no encontrada")
@@ -117,6 +135,24 @@ async def get_note(note_id: str, user=Depends(get_current_user)):
         if "note_tags" in note:
             del note["note_tags"]
             
+        # Process linked tasks
+        tasks_list = []
+        if "task_notes" in note:
+            for item in note["task_notes"]:
+                if item.get("tasks"):
+                    tasks_list.append(item["tasks"])
+            del note["task_notes"]
+        note["tasks"] = tasks_list
+
+        # Process linked events
+        events_list = []
+        if "event_notes" in note:
+            for item in note["event_notes"]:
+                if item.get("events"):
+                    events_list.append(item["events"])
+            del note["event_notes"]
+        note["events"] = events_list
+
         return note
     except Exception as e:
         logger.error(f"Error obteniendo nota: {e}")

@@ -35,12 +35,23 @@ class EventLinkNote(BaseModel):
     event_id: str
     note_id: str
 
+class TaskSummary(BaseModel):
+    id: str
+    title: str
+    is_completed: bool
+
+class NoteSummary(BaseModel):
+    id: str
+    title: Optional[str] = None
+
 class EventResponse(EventBase):
     id: str
     user_id: str
     created_at: datetime
     updated_at: datetime
     reminders_data: List[ReminderResponse] = []
+    tasks: List[TaskSummary] = []
+    notes: List[NoteSummary] = []
     has_reminder: bool = False
     
     class Config:

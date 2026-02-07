@@ -27,6 +27,16 @@ class NoteAssignTags(BaseModel):
     note_id: str = Field(..., description="ID de la nota a la que se asignarán las etiquetas")
     tag_ids: List[str] = Field(..., description="Lista de IDs de las etiquetas a asignar")
 
+class TaskSummary(BaseModel):
+    id: str
+    title: str
+    is_completed: bool
+
+class EventSummary(BaseModel):
+    id: str
+    title: str
+    start_time: datetime
+
 class NoteResponse(NoteBase):
     id: str
     user_id: str
@@ -34,6 +44,8 @@ class NoteResponse(NoteBase):
     created_at: datetime
     updated_at: datetime
     tags: List[TagResponse] = []
+    tasks: List[TaskSummary] = []
+    events: List[EventSummary] = []
 
     class Config:
         from_attributes = True

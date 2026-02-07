@@ -64,6 +64,10 @@ npm run web
   - Usar `curl` para probar endpoints rápidamente antes de integrar con frontend.
   - Verificar códigos de estado HTTP (201 Created, 400 Bad Request, 401 Unauthorized, 409 Conflict).
   - Validar estructuras JSON de respuesta.
+- **Validación Automatizada (Requerida):**
+  - Ejecutar script de integración: `python test_api_full.py`
+  - Revisar logs generados: `api_test_log.json` para confirmar payloads y respuestas correctas.
+  - El script debe cubrir el flujo completo: Crear -> Vincular -> Leer (Verificar Links) -> Borrar.
 - **Validación de Cambios:** Antes de dar una tarea por terminada, verificar "camino feliz" y casos de error comunes.
 
 ## Despliegue

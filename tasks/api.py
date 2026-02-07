@@ -107,9 +107,9 @@ async def list_tasks(
         
         # Construir la query base
         # Si filtramos por tags, necesitamos usar inner join (!inner) en task_tags para filtrar las tareas iniciales (candidatas)
-        select_query = "*, task_tags(tags(*))"
+        select_query = "*, reminders(*), task_tags(tags(*)), task_notes(notes(id, title)), event_tasks(events(id, title, start_time))"
         if tag_ids:
-            select_query = "*, task_tags!inner(tags(*))"
+            select_query = "*, reminders(*), task_tags!inner(tags(*)), task_notes(notes(id, title)), event_tasks(events(id, title, start_time))"
             
         query = supabase.table("tasks").select(select_query).eq("user_id", user_id)
         
@@ -164,6 +164,31 @@ async def list_tasks(
             if "task_tags" in task:
                 del task["task_tags"]
             
+            # Mapear reminders
+            if "reminders" in task:
+                task["reminders_data"] = task["reminders"]
+                del task["reminders"]
+            else:
+                task["reminders_data"] = []
+
+            # Process linked notes
+            notes_list = []
+            if "task_notes" in task:
+                for item in task["task_notes"]:
+                    if item.get("notes"):
+                        notes_list.append(item["notes"])
+                del task["task_notes"]
+            task["notes"] = notes_list
+
+            # Process linked events
+            events_list = []
+            if "event_tasks" in task:
+                for item in task["event_tasks"]:
+                    if item.get("events"):
+                        events_list.append(item["events"])
+                del task["event_tasks"]
+            task["events"] = events_list
+            
             # Aplicar filtro AND estricto
             if tag_ids:
                 # Solo incluimos la tarea si tiene TODOS los tags solicitados
@@ -184,7 +209,7 @@ async def get_task(task_id: str, user=Depends(get_current_user)):
     """
     try:
         user_id = user.id
-        response = supabase.table("tasks").select("*, task_tags(tags(*))").eq("id", task_id).eq("user_id", user_id).execute()
+        response = supabase.table("tasks").select("*, reminders(*), task_tags(tags(*)), task_notes(notes(id, title)), event_tasks(events(id, title, start_time))").eq("id", task_id).eq("user_id", user_id).execute()
         
         if not response.data:
             raise HTTPException(status_code=404, detail="Tarea no encontrada")
@@ -201,9 +226,30 @@ async def get_task(task_id: str, user=Depends(get_current_user)):
         if "task_tags" in task:
             del task["task_tags"]
             
-        # Obtener recordatorios
-        reminders_res = supabase.table("reminders").select("*").eq("task_id", task_id).execute()
-        task["reminders_data"] = reminders_res.data if reminders_res.data else []
+        # Process linked notes
+        notes_list = []
+        if "task_notes" in task:
+            for item in task["task_notes"]:
+                if item.get("notes"):
+                    notes_list.append(item["notes"])
+            del task["task_notes"]
+        task["notes"] = notes_list
+
+        # Process linked events
+        events_list = []
+        if "event_tasks" in task:
+            for item in task["event_tasks"]:
+                if item.get("events"):
+                    events_list.append(item["events"])
+            del task["event_tasks"]
+        task["events"] = events_list
+
+        # Mapear recordatorios (ya vienen en el join)
+        if "reminders" in task:
+            task["reminders_data"] = task["reminders"]
+            del task["reminders"]
+        else:
+            task["reminders_data"] = []
 
         return task
     except Exception as e:

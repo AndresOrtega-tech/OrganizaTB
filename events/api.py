@@ -83,7 +83,7 @@ async def list_events(
     end_date: Optional[datetime] = Query(None, description="Filtrar eventos hasta esta fecha")
 ):
     try:
-        query = supabase.table("events").select("*").eq("user_id", user.id)
+        query = supabase.table("events").select("*, reminders(*), event_tasks(tasks(id, title, is_completed)), event_notes(notes(id, title))").eq("user_id", user.id)
         
         if start_date:
             query = query.gte("start_time", start_date.isoformat())
@@ -93,10 +93,31 @@ async def list_events(
         response = query.execute()
         events = response.data
         
-        # Cargar recordatorios para cada evento (podría optimizarse)
+        # Cargar recordatorios (ya vienen en el join)
         for event in events:
-            rem_res = supabase.table("reminders").select("*").eq("event_id", event["id"]).execute()
-            event["reminders_data"] = rem_res.data or []
+            if "reminders" in event:
+                event["reminders_data"] = event["reminders"]
+                del event["reminders"]
+            else:
+                event["reminders_data"] = []
+            
+            # Process linked tasks
+            tasks_list = []
+            if "event_tasks" in event:
+                for item in event["event_tasks"]:
+                    if item.get("tasks"):
+                        tasks_list.append(item["tasks"])
+                del event["event_tasks"]
+            event["tasks"] = tasks_list
+
+            # Process linked notes
+            notes_list = []
+            if "event_notes" in event:
+                for item in event["event_notes"]:
+                    if item.get("notes"):
+                        notes_list.append(item["notes"])
+                del event["event_notes"]
+            event["notes"] = notes_list
             
         return events
     except Exception as e:
@@ -106,13 +127,35 @@ async def list_events(
 @router.get("/{event_id}", response_model=EventResponse)
 async def get_event(event_id: str, user=Depends(get_current_user)):
     try:
-        res = supabase.table("events").select("*").eq("id", event_id).eq("user_id", user.id).execute()
+        res = supabase.table("events").select("*, reminders(*), event_tasks(tasks(id, title, is_completed)), event_notes(notes(id, title))").eq("id", event_id).eq("user_id", user.id).execute()
         if not res.data:
             raise HTTPException(status_code=404, detail="Evento no encontrado")
             
         event = res.data[0]
-        rem_res = supabase.table("reminders").select("*").eq("event_id", event_id).execute()
-        event["reminders_data"] = rem_res.data or []
+        
+        if "reminders" in event:
+            event["reminders_data"] = event["reminders"]
+            del event["reminders"]
+        else:
+            event["reminders_data"] = []
+
+        # Process linked tasks
+        tasks_list = []
+        if "event_tasks" in event:
+            for item in event["event_tasks"]:
+                if item.get("tasks"):
+                    tasks_list.append(item["tasks"])
+            del event["event_tasks"]
+        event["tasks"] = tasks_list
+
+        # Process linked notes
+        notes_list = []
+        if "event_notes" in event:
+            for item in event["event_notes"]:
+                if item.get("notes"):
+                    notes_list.append(item["notes"])
+            del event["event_notes"]
+        event["notes"] = notes_list
         
         return event
     except Exception as e:
