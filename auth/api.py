@@ -250,35 +250,3 @@ async def request_password_reset(reset_request: UserPasswordResetRequest):
         logger.error(f"Error solicitando cambio de contraseña: {e}")
         raise HTTPException(status_code=400, detail=f"Error solicitando cambio de contraseña: {str(e)}")
 
-
-@router.get("/users/me", summary="Obtener información del usuario autenticado")
-async def get_me(user=Depends(get_current_user)):
-    """
-    Retorna la información del usuario actualmente autenticado.
-    """
-    try:
-        # Consultar perfil completo en la tabla profiles
-        # Usamos maybe_single() por si no existe el perfil aún (aunque debería)
-        profile_res = supabase.table("profiles").select("*").eq("id", user.id).maybe_single().execute()
-        
-        user_data = {
-            "id": user.id,
-            "email": user.email,
-            "full_name": None,
-            "avatar": None
-        }
-        
-        if profile_res.data:
-            user_data["full_name"] = profile_res.data.get("full_name")
-            # Mapeo: avatar_url -> avatar
-            user_data["avatar"] = profile_res.data.get("avatar_url")
-        else:
-             # Fallback a metadatos de auth
-             user_data["full_name"] = user.user_metadata.get("full_name")
-             user_data["avatar"] = user.user_metadata.get("avatar_url")
-             
-        return user_data
-
-    except Exception as e:
-        logger.error(f"Error fetching user me: {e}")
-        raise HTTPException(status_code=400, detail="Error al obtener datos del usuario")
