@@ -1,11 +1,11 @@
 from fastapi import APIRouter, HTTPException, status, Request, Depends
 try:
     from backend.database import supabase
-    from backend.auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate, CurrentUser
+    from backend.auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate, CurrentUser, UserPasswordUpdate, UserPasswordResetRequest
     from backend.auth.dependencies import get_current_user
 except ImportError:
     from database import supabase
-    from auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate, CurrentUser
+    from auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate, CurrentUser, UserPasswordUpdate, UserPasswordResetRequest
     from auth.dependencies import get_current_user
 import logging
 
@@ -229,6 +229,26 @@ async def update_avatar(avatar_update: UserAvatarUpdate, user=Depends(get_curren
     except Exception as e:
         logger.error(f"Error actualizando avatar: {e}")
         raise HTTPException(status_code=400, detail=f"No se pudo actualizar el avatar: {str(e)}")
+
+
+@router.post("/users/password/reset", summary="Solicitar cambio de contraseña")
+async def request_password_reset(reset_request: UserPasswordResetRequest):
+    """
+    Envía un correo al usuario especificado para restablecer su contraseña.
+    No requiere autenticación previa.
+    """
+    try:
+        # Enviar correo de restablecimiento
+        # La redirección apunta a la app web para que el usuario ingrese su nueva clave
+        supabase.auth.reset_password_email(reset_request.email, options={
+            "redirect_to": "https://web-app-organiza-t.vercel.app/update-password"
+        })
+
+        return {"message": "Si el correo está registrado, se ha enviado un enlace para restablecer tu contraseña."}
+
+    except Exception as e:
+        logger.error(f"Error solicitando cambio de contraseña: {e}")
+        raise HTTPException(status_code=400, detail=f"Error solicitando cambio de contraseña: {str(e)}")
 
 
 @router.get("/users/me", summary="Obtener información del usuario autenticado")

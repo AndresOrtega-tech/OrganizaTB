@@ -27,7 +27,7 @@ CREATE TABLE public.tasks (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
     title TEXT NOT NULL,
-    description TEXT,
+    description TEXT CHECK (char_length(description) <= 500),
     due_date TIMESTAMP WITH TIME ZONE,
     is_completed BOOLEAN DEFAULT FALSE,
     calendar_event_id TEXT, 
@@ -42,7 +42,7 @@ CREATE TABLE public.notes (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
     title TEXT,
-    content TEXT,
+    content TEXT CHECK (char_length(content) <= 800),
     is_archived BOOLEAN DEFAULT FALSE,
     media_url TEXT NULL, -- Opcional para futuro soporte MCP
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

@@ -25,10 +25,23 @@ backend/
 │   └── schemas.py
 ├── tags/           # Módulo de Etiquetas
 ├── tasks/          # Módulo de Tareas
-├── notes/          # Módulo de Notas
 ├── database.py     # Cliente Supabase
 └── main.py         # App Entry Point
 ```
+
+## Patrones de Arquitectura
+
+### 1. Service Layer Pattern (Capa de Servicio)
+Para permitir que tanto la API REST (App Móvil) como el Agente IA (MCP) compartan la misma lógica de negocio, se debe separar la lógica de los endpoints.
+- **`api.py` (Controller):** Solo maneja HTTP (Request/Response), validación de entrada, extracción de usuario (Auth) y manejo de errores HTTP. Llama a funciones de `service.py`.
+- **`service.py` (Business Logic):** Contiene la lógica pura. Recibe datos limpios (ids, pydantic models), interactúa con la BD (Supabase) y retorna objetos de dominio. NO depende de `FastAPI.Request` ni lanza `HTTPException` (usa excepciones nativas o retorna `None`).
+- **`mcp/server.py` (AI Interface):** Expone las funciones de `service.py` como "Herramientas" para la IA.
+
+### 2. Integración IA & Memoria (Chat)
+- **Persistencia:** El historial de chat se guarda en Supabase para mantener contexto (Short-term memory).
+  - Tabla `chat_sessions`: Agrupa conversaciones.
+  - Tabla `chat_messages`: Guarda mensajes (user/assistant) y metadata de herramientas ejecutadas.
+- **Flujo:** Frontend -> API Chat -> LLM -> Service Layer -> DB.
 
 ## Base de Datos (Supabase)
 - **Seguridad (RLS):** Row Level Security habilitado en todas las tablas.
