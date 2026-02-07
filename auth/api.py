@@ -1,11 +1,11 @@
 from fastapi import APIRouter, HTTPException, status, Request, Depends
 try:
     from backend.database import supabase
-    from backend.auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate, CurrentUser, UserPasswordUpdate
+    from backend.auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate, CurrentUser, UserPasswordUpdate, UserPasswordRecover
     from backend.auth.dependencies import get_current_user
 except ImportError:
     from database import supabase
-    from auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate, CurrentUser, UserPasswordUpdate
+    from auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate, CurrentUser, UserPasswordUpdate, UserPasswordRecover
     from auth.dependencies import get_current_user
 import logging
 
@@ -251,6 +251,30 @@ async def change_password(password_update: UserPasswordUpdate, user=Depends(get_
     except Exception as e:
         logger.error(f"Error cambiando contraseña: {e}")
         raise HTTPException(status_code=400, detail=f"Error cambiando contraseña: {str(e)}")
+
+
+@router.post("/auth/recovery", summary="Solicitar recuperación de contraseña")
+async def recover_password(recover_data: UserPasswordRecover):
+    """
+    Envía un correo electrónico al usuario con un enlace para restablecer su contraseña.
+    """
+    try:
+        email = recover_data.email
+        redirect_url = "https://web-app-organiza-t.vercel.app/" # O una ruta específica como /reset-password
+
+        response = supabase.auth.reset_password_email(email, options={
+            "redirectTo": redirect_url
+        })
+
+        # Supabase no siempre retorna un error explícito si el email no existe (por seguridad)
+        # pero asumimos éxito si no hay excepción.
+        
+        return {"message": "Si el correo está registrado, se ha enviado un enlace de recuperación."}
+
+    except Exception as e:
+        logger.error(f"Error en recuperación de contraseña: {e}")
+        # Retornamos mensaje genérico por seguridad o el error si estamos en debug
+        raise HTTPException(status_code=400, detail="Error procesando la solicitud de recuperación.")
 
 
 @router.get("/users/me", summary="Obtener información del usuario autenticado")

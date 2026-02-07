@@ -10,6 +10,7 @@ except ImportError:
 class NoteBase(BaseModel):
     title: Optional[str] = Field(None, description="Título de la nota")
     content: Optional[str] = Field(None, description="Contenido de la nota", max_length=800)
+    summary: Optional[str] = Field(None, description="Resumen de la nota generado por IA o manual", max_length=500)
     is_archived: bool = Field(False, description="Indica si la nota está archivada")
 
 class NoteCreate(NoteBase):
@@ -19,6 +20,7 @@ class NoteCreate(NoteBase):
 class NoteUpdate(BaseModel):
     title: Optional[str] = None
     content: Optional[str] = Field(None, max_length=800)
+    summary: Optional[str] = Field(None, max_length=500)
     is_archived: Optional[bool] = None
 
 class NoteAssignTags(BaseModel):
