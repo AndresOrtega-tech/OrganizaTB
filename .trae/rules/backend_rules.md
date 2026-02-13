@@ -106,7 +106,11 @@ Si el API expone un campo con nombre diferente al de la BD (ej. `avatar` vs `ava
 - **Versiones Recientes:** `supabase.auth.sign_up` y similares lanzan excepciones (`AuthApiError`) en lugar de devolver un objeto con atributo `.error`.
 - **Patrón:** Usar bloques `try-except` para capturar fallos en autenticación. Validar éxito verificando si `response.user` no es nulo.
 
-### 3. Filtrado Avanzado (Tags y Relaciones)
+### 3. Creación de Perfiles de Usuario (Triggers)
+- **Automatización:** La creación de registros en la tabla `profiles` debe ser manejada automáticamente por un **Trigger** de PostgreSQL (`on_auth_user_created`) al insertar en `auth.users`.
+- **Evitar Upserts Manuales:** No realizar inserciones manuales en `profiles` desde el endpoint de registro para evitar condiciones de carrera o errores de llaves foráneas. Pasar datos adicionales (metadata) en `options.data` de `sign_up`.
+
+### 4. Filtrado Avanzado (Tags y Relaciones)
 - **Lógica AND en Relaciones M2M:**
   - Supabase `in_` funciona como OR.
   - Para filtrar elementos que tengan **TODOS** los tags (AND):

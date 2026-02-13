@@ -272,6 +272,27 @@ Este documento sirve como referencia de los formatos JSON esperados para las pet
 }
 ```
 
+### Vincular Evento a Etiqueta
+**POST** `/api/events/tags`
+
+**Request:**
+```json
+{
+  "event_id": "7469c3b7-5c25-4b09-a7e9-0491fed14beb",
+  "tag_ids": [
+    "f92ec9e7-82ec-4279-9d58-428c57393413"
+  ]
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Etiquetas asignadas correctamente",
+  "assigned_count": 1
+}
+```
+
 ### Obtener Evento (Con relaciones)
 **GET** `/api/events/{id}`
 
@@ -282,6 +303,13 @@ Este documento sirve como referencia de los formatos JSON esperados para las pet
   "start_time": "2026-02-09T21:35:26.478948Z",
   "end_time": "2026-02-09T22:35:26.478960Z",
   "id": "7469c3b7-5c25-4b09-a7e9-0491fed14beb",
+  "tags": [
+    {
+      "name": "TestTag_23ea2a",
+      "color": "#FF5733",
+      "id": "f92ec9e7-82ec-4279-9d58-428c57393413"
+    }
+  ],
   "tasks": [
     {
       "id": "013e0fc6-c127-435e-8821-b883774dc19d",
