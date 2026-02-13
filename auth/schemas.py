@@ -44,3 +44,7 @@ class CurrentUser(BaseModel):
     email: EmailStr
     full_name: Optional[str] = None
     avatar: Optional[str] = None
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str = Field(..., description="Token de renovación válido")

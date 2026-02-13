@@ -2,11 +2,11 @@ from fastapi import APIRouter, HTTPException, status, Request, Depends
 from fastapi.security import HTTPAuthorizationCredentials
 try:
     from backend.database import supabase, url as supabase_url, key as supabase_key
-    from backend.auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate, CurrentUser, UserPasswordUpdate, UserPasswordResetRequest
+    from backend.auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate, CurrentUser, UserPasswordUpdate, UserPasswordResetRequest, RefreshTokenRequest
     from backend.auth.dependencies import get_current_user, security
 except ImportError:
     from database import supabase, url as supabase_url, key as supabase_key
-    from auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate, CurrentUser, UserPasswordUpdate, UserPasswordResetRequest
+    from auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate, CurrentUser, UserPasswordUpdate, UserPasswordResetRequest, RefreshTokenRequest
     from auth.dependencies import get_current_user, security
 import logging
 import httpx
@@ -159,6 +159,50 @@ async def login(user: UserLogin, request: Request):
     except Exception as e:
         logger.error(f"Error en login: {str(e)}")
         raise HTTPException(status_code=400, detail="Error en la autenticación. Verifique sus credenciales.")
+
+
+@router.post("/auth/refresh", response_model=Token, summary="Renovar Access Token")
+async def refresh_token(request_data: RefreshTokenRequest):
+    """
+    Renueva el token de acceso usando un refresh token válido.
+    Permite mantener la sesión activa sin pedir credenciales nuevamente.
+    """
+    try:
+        # Supabase py client: refresh_session espera el token string
+        # Nota: Dependiendo de la versión, puede ser refresh_session(token) o set_session(token)
+        # Para supabase-py reciente usamos refresh_session
+        auth_response = supabase.auth.refresh_session(request_data.refresh_token)
+
+        if not auth_response.session:
+            raise HTTPException(status_code=401, detail="Refresh token inválido o expirado")
+
+        # Recuperar datos extra del perfil para mantener consistencia en la respuesta
+        full_name = None
+        avatar = None
+        try:
+            profile_res = supabase.table("profiles").select("full_name, avatar_url").eq("id", auth_response.user.id).single().execute()
+            if profile_res.data:
+                full_name = profile_res.data.get("full_name")
+                avatar = profile_res.data.get("avatar_url")
+        except Exception:
+            full_name = auth_response.user.user_metadata.get("full_name")
+            avatar = auth_response.user.user_metadata.get("avatar_url")
+
+        return {
+            "access_token": auth_response.session.access_token,
+            "token_type": "bearer",
+            "refresh_token": auth_response.session.refresh_token,
+            "expires_in": auth_response.session.expires_in,
+            "user": {
+                "email": auth_response.user.email,
+                "full_name": full_name,
+                "avatar": avatar
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Error renovando token: {e}")
+        raise HTTPException(status_code=401, detail="No se pudo renovar la sesión. Inicie sesión nuevamente.")
 
 
 @router.get("/users/me", response_model=CurrentUser, summary="Obtener información del usuario autenticado")
