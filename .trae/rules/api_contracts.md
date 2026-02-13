@@ -2,6 +2,35 @@
 
 Este documento sirve como referencia de los formatos JSON esperados para las peticiones y respuestas de la API. Los ejemplos están basados en pruebas de integración reales.
 
+## 0. Autenticación (Auth)
+
+### Renovar Token (Refresh Token)
+**POST** `/api/auth/refresh`
+
+**Request:**
+```json
+{
+  "refresh_token": "J9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6In..."
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "refresh_token": "J9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6In...",
+  "expires_in": 3600,
+  "user": {
+    "email": "usuario@ejemplo.com",
+    "full_name": "Juan Perez",
+    "avatar": "https://..."
+  }
+}
+```
+
+---
+
 ## 1. Etiquetas (Tags)
 
 ### Crear Etiqueta
