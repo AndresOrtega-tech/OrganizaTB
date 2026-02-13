@@ -1,13 +1,15 @@
 from fastapi import APIRouter, HTTPException, status, Request, Depends
+from fastapi.security import HTTPAuthorizationCredentials
 try:
-    from backend.database import supabase
+    from backend.database import supabase, url as supabase_url, key as supabase_key
     from backend.auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate, CurrentUser, UserPasswordUpdate, UserPasswordResetRequest
-    from backend.auth.dependencies import get_current_user
+    from backend.auth.dependencies import get_current_user, security
 except ImportError:
-    from database import supabase
+    from database import supabase, url as supabase_url, key as supabase_key
     from auth.schemas import UserCreate, UserLogin, Token, UserAvatarUpdate, CurrentUser, UserPasswordUpdate, UserPasswordResetRequest
-    from auth.dependencies import get_current_user
+    from auth.dependencies import get_current_user, security
 import logging
+import httpx
 
 # Configurar logger
 logger = logging.getLogger(__name__)
@@ -231,6 +233,42 @@ async def update_avatar(avatar_update: UserAvatarUpdate, user=Depends(get_curren
         raise HTTPException(status_code=400, detail=f"No se pudo actualizar el avatar: {str(e)}")
 
 
+@router.patch("/users/password", summary="Cambiar contraseña (Usuario autenticado)")
+async def update_password(
+    password_update: UserPasswordUpdate, 
+    user=Depends(get_current_user),
+    token_data: HTTPAuthorizationCredentials = Depends(security)
+):
+    """
+    Permite a un usuario autenticado cambiar su contraseña.
+    Requiere que el usuario haya iniciado sesión (JWT).
+    """
+    try:
+        # Usamos httpx para hacer una petición directa a la API de Auth de Supabase
+        # Esto nos permite actuar como el usuario usando su token bearer.
+        token = token_data.credentials
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.put(
+                f"{supabase_url}/auth/v1/user",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "apikey": supabase_key,
+                    "Content-Type": "application/json"
+                },
+                json={"password": password_update.password}
+            )
+            
+            if response.status_code != 200:
+                raise Exception(f"Error Supabase Auth: {response.text}")
+
+        return {"message": "Contraseña actualizada exitosamente"}
+
+    except Exception as e:
+        logger.error(f"Error actualizando contraseña: {e}")
+        raise HTTPException(status_code=400, detail=f"No se pudo actualizar la contraseña: {str(e)}")
+
+
 @router.post("/users/password/reset", summary="Solicitar cambio de contraseña")
 async def request_password_reset(reset_request: UserPasswordResetRequest):
     """
@@ -250,35 +288,3 @@ async def request_password_reset(reset_request: UserPasswordResetRequest):
         logger.error(f"Error solicitando cambio de contraseña: {e}")
         raise HTTPException(status_code=400, detail=f"Error solicitando cambio de contraseña: {str(e)}")
 
-
-@router.get("/users/me", summary="Obtener información del usuario autenticado")
-async def get_me(user=Depends(get_current_user)):
-    """
-    Retorna la información del usuario actualmente autenticado.
-    """
-    try:
-        # Consultar perfil completo en la tabla profiles
-        # Usamos maybe_single() por si no existe el perfil aún (aunque debería)
-        profile_res = supabase.table("profiles").select("*").eq("id", user.id).maybe_single().execute()
-        
-        user_data = {
-            "id": user.id,
-            "email": user.email,
-            "full_name": None,
-            "avatar": None
-        }
-        
-        if profile_res.data:
-            user_data["full_name"] = profile_res.data.get("full_name")
-            # Mapeo: avatar_url -> avatar
-            user_data["avatar"] = profile_res.data.get("avatar_url")
-        else:
-             # Fallback a metadatos de auth
-             user_data["full_name"] = user.user_metadata.get("full_name")
-             user_data["avatar"] = user.user_metadata.get("avatar_url")
-             
-        return user_data
-
-    except Exception as e:
-        logger.error(f"Error fetching user me: {e}")
-        raise HTTPException(status_code=400, detail="Error al obtener datos del usuario")

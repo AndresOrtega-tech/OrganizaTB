@@ -1,0 +1,394 @@
+[
+  {
+    "timestamp": "2026-02-07T15:35:25.777164",
+    "request": {
+      "method": "POST",
+      "url": "http://127.0.0.1:8000/api/tags/",
+      "payload": {
+        "name": "TestTag_23ea2a",
+        "color": "#FF5733"
+      }
+    },
+    "response": {
+      "status_code": 201,
+      "body": {
+        "name": "TestTag_23ea2a",
+        "color": "#FF5733",
+        "id": "f92ec9e7-82ec-4279-9d58-428c57393413",
+        "user_id": "be22a2c3-67f3-4756-a9c6-956a015cb4ea",
+        "icon": null,
+        "created_at": "2026-02-07T21:35:25.736383+00:00"
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-07T15:35:26.185958",
+    "request": {
+      "method": "POST",
+      "url": "http://127.0.0.1:8000/api/tasks/",
+      "payload": {
+        "title": "Integration Test Task",
+        "description": "Testing full flow",
+        "priority": "alta",
+        "due_date": "2026-02-08T21:35:25.777257+00:00",
+        "reminders": [
+          {
+            "unit": "minutes",
+            "value": 30
+          }
+        ]
+      }
+    },
+    "response": {
+      "status_code": 201,
+      "body": {
+        "title": "Integration Test Task",
+        "description": "Testing full flow",
+        "due_date": "2026-02-08T21:35:25.777257Z",
+        "is_completed": false,
+        "priority": "alta",
+        "id": "013e0fc6-c127-435e-8821-b883774dc19d",
+        "user_id": "be22a2c3-67f3-4756-a9c6-956a015cb4ea",
+        "calendar_event_id": "013e0fc6-c127-435e-8821-b883774dc19d",
+        "media_url": null,
+        "created_at": "2026-02-07T21:35:26.018687Z",
+        "updated_at": "2026-02-07T21:35:26.018687Z",
+        "tags": [],
+        "notes": [],
+        "events": [],
+        "reminders_data": [
+          {
+            "id": "5812d754-c6a4-44e2-a42b-f77afa9a2c0c",
+            "remind_at": "2026-02-08T21:05:25.777257Z",
+            "status": "pending"
+          }
+        ],
+        "has_reminder": true
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-07T15:35:26.478841",
+    "request": {
+      "method": "POST",
+      "url": "http://127.0.0.1:8000/api/notes/",
+      "payload": {
+        "title": "Test Note",
+        "content": "Linked note content"
+      }
+    },
+    "response": {
+      "status_code": 201,
+      "body": {
+        "title": "Test Note",
+        "content": "Linked note content",
+        "summary": null,
+        "is_archived": false,
+        "id": "a8efc7c2-d053-43e3-b77f-699ac91c01c5",
+        "user_id": "be22a2c3-67f3-4756-a9c6-956a015cb4ea",
+        "media_url": null,
+        "created_at": "2026-02-07T21:35:26.434172Z",
+        "updated_at": "2026-02-07T21:35:26.434172Z",
+        "tags": [],
+        "tasks": [],
+        "events": []
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-07T15:35:26.754966",
+    "request": {
+      "method": "POST",
+      "url": "http://127.0.0.1:8000/api/events/",
+      "payload": {
+        "title": "Test Event",
+        "start_time": "2026-02-09T21:35:26.478948+00:00",
+        "end_time": "2026-02-09T22:35:26.478960+00:00"
+      }
+    },
+    "response": {
+      "status_code": 201,
+      "body": {
+        "title": "Test Event",
+        "description": null,
+        "start_time": "2026-02-09T21:35:26.478948Z",
+        "end_time": "2026-02-09T22:35:26.478960Z",
+        "location": null,
+        "is_all_day": false,
+        "id": "7469c3b7-5c25-4b09-a7e9-0491fed14beb",
+        "user_id": "be22a2c3-67f3-4756-a9c6-956a015cb4ea",
+        "created_at": "2026-02-07T21:35:26.724328Z",
+        "updated_at": "2026-02-07T21:35:26.724328Z",
+        "reminders_data": [],
+        "tasks": [],
+        "notes": [],
+        "has_reminder": false
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-07T15:35:27.319350",
+    "request": {
+      "method": "POST",
+      "url": "http://127.0.0.1:8000/api/tasks/notes",
+      "payload": {
+        "task_id": "013e0fc6-c127-435e-8821-b883774dc19d",
+        "note_id": "a8efc7c2-d053-43e3-b77f-699ac91c01c5"
+      }
+    },
+    "response": {
+      "status_code": 201,
+      "body": {
+        "message": "Nota vinculada a la tarea exitosamente"
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-07T15:35:27.835807",
+    "request": {
+      "method": "POST",
+      "url": "http://127.0.0.1:8000/api/tasks/tags",
+      "payload": {
+        "task_id": "013e0fc6-c127-435e-8821-b883774dc19d",
+        "tag_ids": [
+          "f92ec9e7-82ec-4279-9d58-428c57393413"
+        ]
+      }
+    },
+    "response": {
+      "status_code": 200,
+      "body": {
+        "message": "Etiquetas asignadas correctamente",
+        "assigned_count": 1
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-07T15:35:28.268099",
+    "request": {
+      "method": "POST",
+      "url": "http://127.0.0.1:8000/api/notes/tags",
+      "payload": {
+        "note_id": "a8efc7c2-d053-43e3-b77f-699ac91c01c5",
+        "tag_ids": [
+          "f92ec9e7-82ec-4279-9d58-428c57393413"
+        ]
+      }
+    },
+    "response": {
+      "status_code": 201,
+      "body": {
+        "message": "Etiquetas asignadas correctamente"
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-07T15:35:28.807397",
+    "request": {
+      "method": "POST",
+      "url": "http://127.0.0.1:8000/api/events/tasks",
+      "payload": {
+        "event_id": "7469c3b7-5c25-4b09-a7e9-0491fed14beb",
+        "task_id": "013e0fc6-c127-435e-8821-b883774dc19d"
+      }
+    },
+    "response": {
+      "status_code": 201,
+      "body": {
+        "message": "Vinculado correctamente"
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-07T15:35:29.390564",
+    "request": {
+      "method": "POST",
+      "url": "http://127.0.0.1:8000/api/events/notes",
+      "payload": {
+        "event_id": "7469c3b7-5c25-4b09-a7e9-0491fed14beb",
+        "note_id": "a8efc7c2-d053-43e3-b77f-699ac91c01c5"
+      }
+    },
+    "response": {
+      "status_code": 201,
+      "body": {
+        "message": "Vinculado correctamente"
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-07T15:35:29.706114",
+    "request": {
+      "method": "GET",
+      "url": "http://127.0.0.1:8000/api/tasks/013e0fc6-c127-435e-8821-b883774dc19d",
+      "payload": null
+    },
+    "response": {
+      "status_code": 200,
+      "body": {
+        "title": "Integration Test Task",
+        "description": "Testing full flow",
+        "due_date": "2026-02-08T21:35:25.777257Z",
+        "is_completed": false,
+        "priority": "alta",
+        "id": "013e0fc6-c127-435e-8821-b883774dc19d",
+        "user_id": "be22a2c3-67f3-4756-a9c6-956a015cb4ea",
+        "calendar_event_id": "013e0fc6-c127-435e-8821-b883774dc19d",
+        "media_url": null,
+        "created_at": "2026-02-07T21:35:26.018687Z",
+        "updated_at": "2026-02-07T21:35:26.018687Z",
+        "tags": [
+          {
+            "name": "TestTag_23ea2a",
+            "color": "#FF5733",
+            "id": "f92ec9e7-82ec-4279-9d58-428c57393413",
+            "user_id": "be22a2c3-67f3-4756-a9c6-956a015cb4ea",
+            "icon": null,
+            "created_at": "2026-02-07T21:35:25.736383+00:00"
+          }
+        ],
+        "notes": [
+          {
+            "id": "a8efc7c2-d053-43e3-b77f-699ac91c01c5",
+            "title": "Test Note"
+          }
+        ],
+        "events": [
+          {
+            "id": "7469c3b7-5c25-4b09-a7e9-0491fed14beb",
+            "title": "Test Event",
+            "start_time": "2026-02-09T21:35:26.478948Z"
+          }
+        ],
+        "reminders_data": [
+          {
+            "id": "5812d754-c6a4-44e2-a42b-f77afa9a2c0c",
+            "remind_at": "2026-02-08T21:05:25.777257Z",
+            "status": "pending"
+          }
+        ],
+        "has_reminder": true
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-07T15:35:29.998213",
+    "request": {
+      "method": "GET",
+      "url": "http://127.0.0.1:8000/api/notes/a8efc7c2-d053-43e3-b77f-699ac91c01c5",
+      "payload": null
+    },
+    "response": {
+      "status_code": 200,
+      "body": {
+        "title": "Test Note",
+        "content": "Linked note content",
+        "summary": null,
+        "is_archived": false,
+        "id": "a8efc7c2-d053-43e3-b77f-699ac91c01c5",
+        "user_id": "be22a2c3-67f3-4756-a9c6-956a015cb4ea",
+        "media_url": null,
+        "created_at": "2026-02-07T21:35:26.434172Z",
+        "updated_at": "2026-02-07T21:35:26.434172Z",
+        "tags": [
+          {
+            "name": "TestTag_23ea2a",
+            "color": "#FF5733",
+            "id": "f92ec9e7-82ec-4279-9d58-428c57393413",
+            "user_id": "be22a2c3-67f3-4756-a9c6-956a015cb4ea",
+            "icon": null,
+            "created_at": "2026-02-07T21:35:25.736383+00:00"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "013e0fc6-c127-435e-8821-b883774dc19d",
+            "title": "Integration Test Task",
+            "is_completed": false
+          }
+        ],
+        "events": [
+          {
+            "id": "7469c3b7-5c25-4b09-a7e9-0491fed14beb",
+            "title": "Test Event",
+            "start_time": "2026-02-09T21:35:26.478948Z"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-07T15:35:30.321641",
+    "request": {
+      "method": "GET",
+      "url": "http://127.0.0.1:8000/api/events/7469c3b7-5c25-4b09-a7e9-0491fed14beb",
+      "payload": null
+    },
+    "response": {
+      "status_code": 200,
+      "body": {
+        "title": "Test Event",
+        "description": null,
+        "start_time": "2026-02-09T21:35:26.478948Z",
+        "end_time": "2026-02-09T22:35:26.478960Z",
+        "location": null,
+        "is_all_day": false,
+        "id": "7469c3b7-5c25-4b09-a7e9-0491fed14beb",
+        "user_id": "be22a2c3-67f3-4756-a9c6-956a015cb4ea",
+        "created_at": "2026-02-07T21:35:26.724328Z",
+        "updated_at": "2026-02-07T21:35:26.724328Z",
+        "reminders_data": [],
+        "tasks": [
+          {
+            "id": "013e0fc6-c127-435e-8821-b883774dc19d",
+            "title": "Integration Test Task",
+            "is_completed": false
+          }
+        ],
+        "notes": [
+          {
+            "id": "a8efc7c2-d053-43e3-b77f-699ac91c01c5",
+            "title": "Test Note"
+          }
+        ],
+        "has_reminder": false
+      }
+    }
+  },
+  {
+    "timestamp": "2026-02-07T15:35:30.592352",
+    "request": {
+      "method": "DELETE",
+      "url": "http://127.0.0.1:8000/api/tasks/013e0fc6-c127-435e-8821-b883774dc19d",
+      "payload": null
+    },
+    "response": {
+      "status_code": 204,
+      "body": ""
+    }
+  },
+  {
+    "timestamp": "2026-02-07T15:35:30.861710",
+    "request": {
+      "method": "DELETE",
+      "url": "http://127.0.0.1:8000/api/notes/a8efc7c2-d053-43e3-b77f-699ac91c01c5",
+      "payload": null
+    },
+    "response": {
+      "status_code": 204,
+      "body": ""
+    }
+  },
+  {
+    "timestamp": "2026-02-07T15:35:31.153413",
+    "request": {
+      "method": "DELETE",
+      "url": "http://127.0.0.1:8000/api/events/7469c3b7-5c25-4b09-a7e9-0491fed14beb",
+      "payload": null
+    },
+    "response": {
+      "status_code": 204,
+      "body": ""
+    }
+  }
+]

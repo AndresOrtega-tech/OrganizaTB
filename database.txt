@@ -32,6 +32,7 @@ CREATE TABLE public.tasks (
     is_completed BOOLEAN DEFAULT FALSE,
     calendar_event_id TEXT, 
     has_reminder BOOLEAN DEFAULT FALSE,
+    priority TEXT DEFAULT 'media' CHECK (priority IN ('baja', 'media', 'alta')),
     media_url TEXT NULL, -- Opcional para futuro soporte MCP
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -43,6 +44,7 @@ CREATE TABLE public.notes (
     user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
     title TEXT,
     content TEXT CHECK (char_length(content) <= 800),
+    summary TEXT CHECK (char_length(summary) <= 500),
     is_archived BOOLEAN DEFAULT FALSE,
     media_url TEXT NULL, -- Opcional para futuro soporte MCP
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -74,7 +76,56 @@ CREATE TABLE public.improvement_insights (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 8. SEGURIDAD (RLS)
+-- 8. TABLA DE RECORDATORIOS (Reminders)
+CREATE TABLE public.reminders (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+    task_id UUID REFERENCES public.tasks(id) ON DELETE CASCADE NOT NULL,
+    remind_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    status TEXT DEFAULT 'pending', -- pending, sent, failed
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 9. RELACIÓN TAREAS-NOTAS (Task Notes)
+CREATE TABLE public.task_notes (
+    task_id UUID REFERENCES public.tasks(id) ON DELETE CASCADE,
+    note_id UUID REFERENCES public.notes(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 10. TABLA DE EVENTOS (Events)
+CREATE TABLE public.events (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT CHECK (char_length(description) <= 500),
+    start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    end_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    location TEXT,
+    is_all_day BOOLEAN DEFAULT FALSE,
+    has_reminder BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 11. TABLAS INTERMEDIAS PARA EVENTOS
+CREATE TABLE public.event_tasks (
+    event_id UUID REFERENCES public.events(id) ON DELETE CASCADE,
+    task_id UUID REFERENCES public.tasks(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    PRIMARY KEY (event_id, task_id)
+);
+
+CREATE TABLE public.event_notes (
+    event_id UUID REFERENCES public.events(id) ON DELETE CASCADE,
+    note_id UUID REFERENCES public.notes(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    PRIMARY KEY (event_id, note_id)
+);
+
+-- Actualización Reminders: event_id y check constraint (task_id XOR event_id)
+
+-- 12. SEGURIDAD (RLS)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
@@ -82,6 +133,11 @@ ALTER TABLE public.notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.task_tags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.note_tags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.improvement_insights ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.reminders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.task_notes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.event_tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.event_notes ENABLE ROW LEVEL SECURITY;
 
 -- Políticas de Seguridad (RLS) Detalladas
 
@@ -141,7 +197,44 @@ CREATE POLICY "NoteTags Policy" ON public.note_tags FOR ALL USING (
     EXISTS (SELECT 1 FROM public.notes WHERE id = note_tags.note_id AND user_id = auth.uid())
 );
 
--- 9. TRIGGER: CREACIÓN AUTOMÁTICA DE PERFIL
+-- 7. REMINDERS
+DROP POLICY IF EXISTS "Privacidad" ON public.reminders;
+CREATE POLICY "Reminders Select" ON public.reminders FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Reminders Update" ON public.reminders FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Reminders Delete" ON public.reminders FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Reminders Insert" ON public.reminders FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- 8. TASK NOTES
+DROP POLICY IF EXISTS "TaskNotes Policy" ON public.task_notes;
+CREATE POLICY "TaskNotes Policy" ON public.task_notes FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.tasks WHERE id = task_notes.task_id AND user_id = auth.uid())
+) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.tasks WHERE id = task_notes.task_id AND user_id = auth.uid())
+);
+
+-- 9. EVENTS
+DROP POLICY IF EXISTS "Privacidad" ON public.events;
+CREATE POLICY "Events Select" ON public.events FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Events Update" ON public.events FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Events Delete" ON public.events FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Events Insert" ON public.events FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- 10. EVENT TASKS & NOTES
+DROP POLICY IF EXISTS "EventTasks Policy" ON public.event_tasks;
+CREATE POLICY "EventTasks Policy" ON public.event_tasks FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.events WHERE id = event_tasks.event_id AND user_id = auth.uid())
+) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.events WHERE id = event_tasks.event_id AND user_id = auth.uid())
+);
+
+DROP POLICY IF EXISTS "EventNotes Policy" ON public.event_notes;
+CREATE POLICY "EventNotes Policy" ON public.event_notes FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.events WHERE id = event_notes.event_id AND user_id = auth.uid())
+) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.events WHERE id = event_notes.event_id AND user_id = auth.uid())
+);
+
+-- 11. TRIGGER: CREACIÓN AUTOMÁTICA DE PERFIL
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN

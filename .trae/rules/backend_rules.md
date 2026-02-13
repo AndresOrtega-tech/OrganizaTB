@@ -25,6 +25,18 @@ backend/
 │   └── schemas.py
 ├── tags/           # Módulo de Etiquetas
 ├── tasks/          # Módulo de Tareas
+<<<<<<< HEAD
+=======
+│   ├── api.py      # Endpoints HTTP
+│   ├── service.py  # Lógica de Negocio (Reutilizable)
+│   └── schemas.py
+├── notes/          # Módulo de Notas
+├── events/         # Módulo de Eventos (Calendario)
+├── reminders/      # Módulo de Recordatorios
+├── mcp/            # Módulo Model Context Protocol (AI)
+│   ├── server.py   # Definición de Tools
+│   └── main.py     # Entry point MCP
+>>>>>>> production
 ├── database.py     # Cliente Supabase
 └── main.py         # App Entry Point
 ```
@@ -42,6 +54,23 @@ Para permitir que tanto la API REST (App Móvil) como el Agente IA (MCP) compart
   - Tabla `chat_sessions`: Agrupa conversaciones.
   - Tabla `chat_messages`: Guarda mensajes (user/assistant) y metadata de herramientas ejecutadas.
 - **Flujo:** Frontend -> API Chat -> LLM -> Service Layer -> DB.
+
+### 3. Optimización de Consultas (Supabase Joins)
+Para evitar el problema N+1 y múltiples llamadas a la API de Supabase, utilizar la sintaxis de Joins en las consultas `select`.
+- **Patrón:** `select("*, linked_table(column1, column2)")`
+- **Uso:** Al obtener una Tarea, traer sus Notas y Eventos en la misma consulta.
+  ```python
+  response = supabase.table("tasks").select(
+      "*, task_notes(notes(id, title)), event_tasks(events(id, title))"
+  ).eq("id", task_id).single().execute()
+  ```
+- **Procesamiento:** El resultado anidado debe procesarse en Python para aplanar la estructura antes de pasarla al modelo Pydantic (eliminar tablas intermedias como `task_notes`).
+
+### 4. Modelos de Resumen (Pydantic Summary Models)
+Para evitar errores de referencia circular (RecursionError) y sobrecarga de datos:
+- **Regla:** No incluir el modelo completo de una entidad vinculada dentro de otra.
+- **Solución:** Crear modelos `Summary` (ej. `TaskSummary`, `NoteSummary`) que solo incluyan los campos esenciales (`id`, `title`, `is_completed`).
+- **Ejemplo:** `TaskResponse` contiene una lista de `NoteSummary`, no de `NoteResponse`.
 
 ## Base de Datos (Supabase)
 - **Seguridad (RLS):** Row Level Security habilitado en todas las tablas.
