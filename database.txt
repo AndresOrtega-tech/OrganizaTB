@@ -123,6 +123,13 @@ CREATE TABLE public.event_notes (
     PRIMARY KEY (event_id, note_id)
 );
 
+CREATE TABLE public.event_tags (
+    event_id UUID REFERENCES public.events(id) ON DELETE CASCADE,
+    tag_id UUID REFERENCES public.tags(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    PRIMARY KEY (event_id, tag_id)
+);
+
 -- Actualización Reminders: event_id y check constraint (task_id XOR event_id)
 
 -- 12. SEGURIDAD (RLS)
@@ -138,6 +145,7 @@ ALTER TABLE public.task_notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.event_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.event_notes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.event_tags ENABLE ROW LEVEL SECURITY;
 
 -- Políticas de Seguridad (RLS) Detalladas
 
@@ -232,6 +240,13 @@ CREATE POLICY "EventNotes Policy" ON public.event_notes FOR ALL USING (
     EXISTS (SELECT 1 FROM public.events WHERE id = event_notes.event_id AND user_id = auth.uid())
 ) WITH CHECK (
     EXISTS (SELECT 1 FROM public.events WHERE id = event_notes.event_id AND user_id = auth.uid())
+);
+
+DROP POLICY IF EXISTS "EventTags Policy" ON public.event_tags;
+CREATE POLICY "EventTags Policy" ON public.event_tags FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.events WHERE id = event_tags.event_id AND user_id = auth.uid())
+) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.events WHERE id = event_tags.event_id AND user_id = auth.uid())
 );
 
 -- 11. TRIGGER: CREACIÓN AUTOMÁTICA DE PERFIL

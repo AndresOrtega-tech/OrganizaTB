@@ -35,6 +35,10 @@ class EventLinkNote(BaseModel):
     event_id: str
     note_id: str
 
+class EventAssignTags(BaseModel):
+    event_id: str = Field(..., description="ID del evento a etiquetar")
+    tag_ids: List[str] = Field(..., description="Lista de IDs de las etiquetas a asignar")
+
 class TaskSummary(BaseModel):
     id: str
     title: str
@@ -50,6 +54,7 @@ class EventResponse(EventBase):
     created_at: datetime
     updated_at: datetime
     reminders_data: List[ReminderResponse] = []
+    tags: List[TagResponse] = []
     tasks: List[TaskSummary] = []
     notes: List[NoteSummary] = []
     has_reminder: bool = False

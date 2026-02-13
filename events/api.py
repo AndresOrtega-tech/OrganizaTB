@@ -5,12 +5,12 @@ from datetime import datetime, timedelta
 
 try:
     from backend.database import supabase
-    from backend.events.schemas import EventCreate, EventUpdate, EventResponse, EventLinkTask, EventLinkNote
+    from backend.events.schemas import EventCreate, EventUpdate, EventResponse, EventLinkTask, EventLinkNote, EventAssignTags
     from backend.tasks.schemas import ReminderConfig
     from backend.auth.dependencies import get_current_user
 except ImportError:
     from database import supabase
-    from events.schemas import EventCreate, EventUpdate, EventResponse, EventLinkTask, EventLinkNote
+    from events.schemas import EventCreate, EventUpdate, EventResponse, EventLinkTask, EventLinkNote, EventAssignTags
     from tasks.schemas import ReminderConfig
     from auth.dependencies import get_current_user
 import logging
@@ -80,19 +80,31 @@ async def create_event(event: EventCreate, user=Depends(get_current_user)):
 async def list_events(
     user=Depends(get_current_user),
     start_date: Optional[datetime] = Query(None, description="Filtrar eventos desde esta fecha"),
-    end_date: Optional[datetime] = Query(None, description="Filtrar eventos hasta esta fecha")
+    end_date: Optional[datetime] = Query(None, description="Filtrar eventos hasta esta fecha"),
+    tag_ids: Optional[List[str]] = Query(None, description="Filtrar por etiquetas (AND)")
 ):
     try:
-        query = supabase.table("events").select("*, reminders(*), event_tasks(tasks(id, title, is_completed)), event_notes(notes(id, title))").eq("user_id", user.id)
+        # Join con event_tags para filtrar o mostrar
+        select_query = "*, reminders(*), event_tasks(tasks(id, title, is_completed)), event_notes(notes(id, title)), event_tags(tags(*))"
+        if tag_ids:
+            select_query = "*, reminders(*), event_tasks(tasks(id, title, is_completed)), event_notes(notes(id, title)), event_tags!inner(tags(*))"
+
+        query = supabase.table("events").select(select_query).eq("user_id", user.id)
         
         if start_date:
             query = query.gte("start_time", start_date.isoformat())
         if end_date:
             query = query.lte("end_time", end_date.isoformat())
             
+        if tag_ids:
+            query = query.in_("event_tags.tag_id", tag_ids)
+
         response = query.execute()
         events = response.data
         
+        final_events = []
+        required_tag_ids = set(tag_ids) if tag_ids else set()
+
         # Cargar recordatorios (ya vienen en el join)
         for event in events:
             if "reminders" in event:
@@ -119,7 +131,25 @@ async def list_events(
                 del event["event_notes"]
             event["notes"] = notes_list
             
-        return events
+            # Process tags
+            tags_list = []
+            found_tag_ids = set()
+            if "event_tags" in event:
+                for item in event["event_tags"]:
+                    if item.get("tags"):
+                        tag_data = item["tags"]
+                        tags_list.append(tag_data)
+                        found_tag_ids.add(str(tag_data.get("id")))
+                del event["event_tags"]
+            event["tags"] = tags_list
+
+            if tag_ids:
+                if required_tag_ids.issubset(found_tag_ids):
+                    final_events.append(event)
+            else:
+                final_events.append(event)
+            
+        return final_events
     except Exception as e:
         logger.error(f"Error listando eventos: {e}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -127,7 +157,7 @@ async def list_events(
 @router.get("/{event_id}", response_model=EventResponse)
 async def get_event(event_id: str, user=Depends(get_current_user)):
     try:
-        res = supabase.table("events").select("*, reminders(*), event_tasks(tasks(id, title, is_completed)), event_notes(notes(id, title))").eq("id", event_id).eq("user_id", user.id).execute()
+        res = supabase.table("events").select("*, reminders(*), event_tasks(tasks(id, title, is_completed)), event_notes(notes(id, title)), event_tags(tags(*))").eq("id", event_id).eq("user_id", user.id).execute()
         if not res.data:
             raise HTTPException(status_code=404, detail="Evento no encontrado")
             
@@ -157,6 +187,15 @@ async def get_event(event_id: str, user=Depends(get_current_user)):
             del event["event_notes"]
         event["notes"] = notes_list
         
+        # Process tags
+        tags_list = []
+        if "event_tags" in event:
+            for item in event["event_tags"]:
+                if item.get("tags"):
+                    tags_list.append(item["tags"])
+            del event["event_tags"]
+        event["tags"] = tags_list
+
         return event
     except Exception as e:
         logger.error(f"Error obteniendo evento: {e}")
@@ -230,6 +269,58 @@ async def delete_event(event_id: str, user=Depends(get_current_user)):
         raise HTTPException(status_code=400, detail=str(e))
 
 # Relaciones
+@router.post("/tags", status_code=status.HTTP_200_OK, summary="Asignar etiquetas a un evento")
+async def assign_tags_to_event(assignment: EventAssignTags, user=Depends(get_current_user)):
+    """
+    Asigna una o más etiquetas a un evento existente.
+    """
+    try:
+        user_id = user.id
+        event_id = assignment.event_id
+        tag_ids = assignment.tag_ids
+
+        # 1. Verificar que el evento pertenece al usuario
+        event_check = supabase.table("events").select("id").eq("id", event_id).eq("user_id", user_id).execute()
+        if not event_check.data:
+            raise HTTPException(status_code=404, detail="Evento no encontrado")
+
+        if not tag_ids:
+            return {"message": "No se proporcionaron etiquetas para asignar"}
+
+        # 2. Preparar datos para inserción en event_tags
+        data_to_insert = [{"event_id": event_id, "tag_id": tag_id} for tag_id in tag_ids]
+        
+        # Upsert
+        response = supabase.table("event_tags").upsert(data_to_insert, on_conflict="event_id, tag_id", ignore_duplicates=True).execute()
+
+        return {"message": "Etiquetas asignadas correctamente", "assigned_count": len(tag_ids)}
+
+    except Exception as e:
+        logger.error(f"Error asignando etiquetas a evento: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.delete("/{event_id}/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Desvincular etiqueta de evento")
+async def remove_tag_from_event(event_id: str, tag_id: str, user=Depends(get_current_user)):
+    """
+    Elimina la asociación entre un evento y una etiqueta.
+    """
+    try:
+        user_id = user.id
+
+        # 1. Verificar que el evento pertenece al usuario
+        event_check = supabase.table("events").select("id").eq("id", event_id).eq("user_id", user_id).execute()
+        if not event_check.data:
+            raise HTTPException(status_code=404, detail="Evento no encontrado")
+
+        # 2. Eliminar la relación
+        response = supabase.table("event_tags").delete().eq("event_id", event_id).eq("tag_id", tag_id).execute()
+
+        return None
+
+    except Exception as e:
+        logger.error(f"Error desvinculando etiqueta de evento: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
 @router.post("/tasks", status_code=201)
 async def link_task(link: EventLinkTask, user=Depends(get_current_user)):
     try:
