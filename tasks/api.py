@@ -95,6 +95,9 @@ async def list_tasks(
     is_completed: Optional[bool] = Query(None, description="Filtrar por estado de completado"),
     tag_ids: Optional[List[str]] = Query(None, description="Filtrar por etiquetas (AND: la tarea debe tener TODAS las etiquetas seleccionadas)"),
     priority: Optional[str] = Query(None, pattern="^(baja|media|alta)$", description="Filtrar por prioridad (baja, media, alta)"),
+    start_date: Optional[datetime] = Query(None, description="Filtrar desde esta fecha (incluye)"),
+    end_date: Optional[datetime] = Query(None, description="Filtrar hasta esta fecha (incluye)"),
+    date_field: str = Query("due_date", pattern="^(due_date|updated_at|created_at)$", description="Campo de fecha a usar para el rango"),
     sort_by: str = Query("updated_at", pattern="^(updated_at|due_date|priority)$", description="Ordenar por fecha o prioridad"),
     order: str = Query("desc", pattern="^(asc|desc)$", description="Dirección del ordenamiento")
 ):
@@ -123,6 +126,12 @@ async def list_tasks(
         if tag_ids:
             # Primero filtramos tareas que tengan AL MENOS UNO de los tags (OR a nivel de DB)
             query = query.in_("task_tags.tag_id", tag_ids)
+        
+        # Filtro por rango de fechas en el campo indicado
+        if start_date:
+            query = query.gte(date_field, start_date.isoformat())
+        if end_date:
+            query = query.lte(date_field, end_date.isoformat())
             
         # Ordenamiento
         is_desc = (order == "desc")
