@@ -110,6 +110,7 @@ async def list_tasks(
         
         # Construir la query base
         # Si filtramos por tags, necesitamos usar inner join (!inner) en task_tags para filtrar las tareas iniciales (candidatas)
+        # En el listado solo necesitamos título de la nota, no el contenido completo
         select_query = "*, reminders(*), task_tags(tags(*)), task_notes(notes(id, title)), event_tasks(events(id, title, start_time))"
         if tag_ids:
             select_query = "*, reminders(*), task_tags!inner(tags(*)), task_notes(notes(id, title)), event_tasks(events(id, title, start_time))"
@@ -218,7 +219,7 @@ async def get_task(task_id: str, user=Depends(get_current_user)):
     """
     try:
         user_id = user.id
-        response = supabase.table("tasks").select("*, reminders(*), task_tags(tags(*)), task_notes(notes(id, title)), event_tasks(events(id, title, start_time))").eq("id", task_id).eq("user_id", user_id).execute()
+        response = supabase.table("tasks").select("*, reminders(*), task_tags(tags(*)), task_notes(notes(id, title, content)), event_tasks(events(id, title, start_time))").eq("id", task_id).eq("user_id", user_id).execute()
         
         if not response.data:
             raise HTTPException(status_code=404, detail="Tarea no encontrada")

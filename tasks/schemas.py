@@ -19,6 +19,7 @@ class ReminderResponse(BaseModel):
 class NoteSummary(BaseModel):
     id: str
     title: Optional[str] = None
+    content: Optional[str] = None
 
 class EventSummary(BaseModel):
     id: str
