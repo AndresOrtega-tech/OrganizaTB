@@ -135,9 +135,9 @@ async def get_note(note_id: str, user=Depends(get_current_user)):
 async def update_note(note_id: str, note_update: NoteUpdate, user=Depends(get_current_user)):
     try:
         user_id = user.id
-        
-        update_data = {k: v for k, v in note_update.dict().items() if v is not None}
-        
+
+        update_data = note_update.model_dump(exclude_unset=True)
+
         if not update_data:
             raise HTTPException(status_code=400, detail="No se proporcionaron datos para actualizar")
 
