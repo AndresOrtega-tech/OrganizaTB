@@ -130,9 +130,7 @@ async def list_tasks(
         if view == "home":
             max_date = today + timedelta(days=7)
             query = query.lte("due_date", max_date.isoformat())
-        elif view == "tasks":
-            query = query.eq("is_completed", False)
-        else:
+        elif view is None:
             if is_completed is not None:
                 query = query.eq("is_completed", is_completed)
 
