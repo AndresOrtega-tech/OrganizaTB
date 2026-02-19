@@ -174,6 +174,8 @@ async def list_tasks(
 
         # Post-procesamiento de relaciones
         final_tasks = []
+        pending_tasks = []
+        completed_tasks = []
         required_tag_ids = set(tag_ids) if tag_ids else set()
 
         for task in tasks_raw:
@@ -230,11 +232,19 @@ async def list_tasks(
                 del task["event_tasks"]
             task["events"] = events_list
 
-            if tag_ids:
-                if required_tag_ids.issubset(found_tag_ids):
-                    final_tasks.append(task)
+            if tag_ids and not required_tag_ids.issubset(found_tag_ids):
+                continue
+
+            if view == "home":
+                if task.get("is_completed"):
+                    completed_tasks.append(task)
+                else:
+                    pending_tasks.append(task)
             else:
                 final_tasks.append(task)
+
+        if view == "home":
+            final_tasks = pending_tasks + completed_tasks
 
         next_cursor = None
         if has_more and final_tasks:
