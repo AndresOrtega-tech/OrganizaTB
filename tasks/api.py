@@ -176,27 +176,32 @@ async def list_tasks(
         final_tasks = []
         pending_tasks = []
         completed_tasks = []
+        no_due_pending_tasks = []
         required_tag_ids = set(tag_ids) if tag_ids else set()
 
         for task in tasks_raw:
-            # --- Filtro adicional para view=home ---
-            if view == "home":
+            if view in ("home", "tasks"):
                 due_date_str = task.get("due_date")
                 if not due_date_str:
-                    # Sin due_date: no se muestra en Home
-                    continue
+                    if view == "home":
+                        continue
+                    if view == "tasks":
+                        if not task.get("is_completed"):
+                            no_due_pending_tasks.append(task)
+                        continue
                 try:
                     due_dt = datetime.fromisoformat(due_date_str.replace("Z", "+00:00"))
                 except ValueError:
                     continue
 
-                if max_date is not None and due_dt > max_date:
-                    # Fuera de la ventana de próximos 7 días
-                    continue
-
-                if due_dt < today and task.get("is_completed"):
-                    # Completadas atrasadas no se muestran
-                    continue
+                if view == "home":
+                    if max_date is not None and due_dt > max_date:
+                        continue
+                    if due_dt < today and task.get("is_completed"):
+                        continue
+                elif view == "tasks":
+                    if due_dt < today and task.get("is_completed"):
+                        continue
 
             tags_list = []
             found_tag_ids = set()
@@ -245,6 +250,8 @@ async def list_tasks(
 
         if view == "home":
             final_tasks = pending_tasks + completed_tasks
+        elif view == "tasks":
+            final_tasks = final_tasks + no_due_pending_tasks
 
         next_cursor = None
         if has_more and final_tasks:
