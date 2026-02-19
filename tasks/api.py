@@ -125,9 +125,9 @@ async def list_tasks(
 
         # --- Bloque 1: filtrado por vista ---
         today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        max_date = None
 
         if view == "home":
-            query = query.eq("is_completed", False)
             max_date = today + timedelta(days=7)
             query = query.lte("due_date", max_date.isoformat())
         elif view == "tasks":
@@ -177,6 +177,25 @@ async def list_tasks(
         required_tag_ids = set(tag_ids) if tag_ids else set()
 
         for task in tasks_raw:
+            # --- Filtro adicional para view=home ---
+            if view == "home":
+                due_date_str = task.get("due_date")
+                if not due_date_str:
+                    # Sin due_date: no se muestra en Home
+                    continue
+                try:
+                    due_dt = datetime.fromisoformat(due_date_str.replace("Z", "+00:00"))
+                except ValueError:
+                    continue
+
+                if max_date is not None and due_dt > max_date:
+                    # Fuera de la ventana de próximos 7 días
+                    continue
+
+                if due_dt < today and task.get("is_completed"):
+                    # Completadas atrasadas no se muestran
+                    continue
+
             tags_list = []
             found_tag_ids = set()
 
