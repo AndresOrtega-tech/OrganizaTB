@@ -30,7 +30,6 @@ class TaskUpdate(BaseModel):
     reminders: Optional[List[ReminderConfig]] = Field(None, description="Nueva lista de recordatorios (reemplaza los existentes)")
 
 class TaskAssignTags(BaseModel):
-    task_id: str = Field(..., description="ID de la tarea")
     tag_id: str = Field(..., description="ID de la etiqueta a asignar")
 
 class TaskLinkNote(BaseModel):

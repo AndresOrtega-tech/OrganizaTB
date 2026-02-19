@@ -139,8 +139,26 @@ async def list_tasks(
                 task["reminders_data"] = []
 
         if effective_view == "home":
-            # Ignorar filtros manipulables
-            response = supabase.table("tasks").select("*, reminders(*)").eq("user_id", user_id).execute()
+            # Ignorar filtros manipulables y limitar el conjunto en BD a la ventana relevante
+            today_iso = today.isoformat()
+            window_end = today + timedelta(days=7)
+            window_end_iso = window_end.isoformat()
+
+            # Tareas pendientes atrasadas (is_completed=false, due_date < hoy)
+            # y tareas (pendientes y completadas) dentro de hoy..hoy+7
+            or_condition = (
+                f"and(is_completed.eq.false,due_date.lt.{today_iso}),"
+                f"and(due_date.gte.{today_iso},due_date.lte.{window_end_iso})"
+            )
+
+            response = (
+                supabase
+                .table("tasks")
+                .select("*, reminders(*)")
+                .eq("user_id", user_id)
+                .or_(or_condition)
+                .execute()
+            )
             tasks = response.data or []
 
             tasks_with_due_date = []
@@ -158,8 +176,6 @@ async def list_tasks(
             overdue_pending = []
             future_pending = []
             future_completed = []
-
-            window_end = today + timedelta(days=7)
 
             for task in tasks_with_due_date:
                 due_dt = task["_due_dt"]
@@ -180,24 +196,21 @@ async def list_tasks(
 
             ordered = overdue_pending + future_pending + future_completed
 
-            for task in ordered:
-                map_reminders(task)
-                if "_due_dt" in task:
-                    del task["_due_dt"]
-
             if cursor:
-                ordered = [t for t in ordered if datetime.fromisoformat(str(t.get("due_date")).replace("Z", "+00:00")) > cursor]
+                ordered = [t for t in ordered if t.get("_due_dt") and t["_due_dt"] > cursor]
 
             page = ordered[:limit]
             has_more = len(ordered) > limit
             next_cursor = None
             if page and has_more:
-                last_due = page[-1].get("due_date")
-                if last_due:
-                    try:
-                        next_cursor = datetime.fromisoformat(str(last_due).replace("Z", "+00:00"))
-                    except Exception:
-                        next_cursor = None
+                last_due_dt = page[-1].get("_due_dt")
+                if last_due_dt:
+                    next_cursor = last_due_dt
+
+            for task in page:
+                map_reminders(task)
+                if "_due_dt" in task:
+                    del task["_due_dt"]
 
             return {
                 "data": page,
@@ -383,9 +396,9 @@ async def update_task(task_id: str, task_update: TaskUpdate, user=Depends(get_cu
     try:
         user_id = user.id
         
-        # Filtrar campos que no son None
+        # Filtrar campos según lo que realmente se envió (exclude_unset)
         # Excluimos reminders de update_data porque no es columna de tasks
-        update_data = {k: v for k, v in task_update.dict(exclude={"reminders"}).items() if v is not None}
+        update_data = task_update.dict(exclude={"reminders"}, exclude_unset=True)
         
         # Obtenemos la tarea actual para saber su due_date si no se envía en el update
         current_task_res = supabase.table("tasks").select("due_date, has_reminder").eq("id", task_id).eq("user_id", user_id).execute()
@@ -395,10 +408,14 @@ async def update_task(task_id: str, task_update: TaskUpdate, user=Depends(get_cu
         
         # Determinar nuevo due_date
         new_due_date_str = None
-        if "due_date" in update_data and update_data["due_date"]:
-             new_due_date_str = update_data["due_date"].isoformat()
-             # Actualizamos en el dict para la DB
-             update_data["due_date"] = new_due_date_str
+        if "due_date" in update_data:
+             if update_data["due_date"] is not None:
+                 new_due_date_str = update_data["due_date"].isoformat()
+                 # Actualizamos en el dict para la DB
+                 update_data["due_date"] = new_due_date_str
+             else:
+                 # Se envió due_date explícitamente como null -> lo dejamos como None (DB lo pondrá en NULL)
+                 new_due_date_str = None
         elif current_task.get("due_date"):
              new_due_date_str = current_task.get("due_date")
              
