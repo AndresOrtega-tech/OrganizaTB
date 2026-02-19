@@ -69,3 +69,12 @@ class TaskResponse(TaskBase):
 
     class Config:
         from_attributes = True
+
+class TaskRelatedResponse(BaseModel):
+    notes: List[NoteSummary] = []
+    events: List[EventSummary] = []
+
+class PaginatedTaskResponse(BaseModel):
+    data: List[TaskResponse]
+    next_cursor: Optional[str] = None
+    has_more: bool = False

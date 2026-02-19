@@ -1,15 +1,15 @@
 from fastapi import APIRouter, HTTPException, status, Depends, Query
 from typing import List, Optional
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 try:
     from backend.database import supabase
-    from backend.tasks.schemas import TaskCreate, TaskUpdate, TaskResponse, TaskAssignTags, ReminderConfig, TaskLinkNote
+    from backend.tasks.schemas import TaskCreate, TaskUpdate, TaskResponse, TaskAssignTags, ReminderConfig, TaskLinkNote, PaginatedTaskResponse, TaskRelatedResponse
     from backend.auth.dependencies import get_current_user
 except ImportError:
     from database import supabase
-    from tasks.schemas import TaskCreate, TaskUpdate, TaskResponse, TaskAssignTags, ReminderConfig, TaskLinkNote
+    from tasks.schemas import TaskCreate, TaskUpdate, TaskResponse, TaskAssignTags, ReminderConfig, TaskLinkNote, PaginatedTaskResponse, TaskRelatedResponse
     from auth.dependencies import get_current_user
 import logging
 
@@ -89,99 +89,112 @@ async def create_task(task: TaskCreate, user=Depends(get_current_user)):
         logger.error(f"Error creando tarea: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/", response_model=List[TaskResponse], summary="Listar todas las tareas del usuario")
+@router.get("/", response_model=PaginatedTaskResponse, summary="Listar todas las tareas del usuario")
 async def list_tasks(
     user=Depends(get_current_user),
-    is_completed: Optional[bool] = Query(None, description="Filtrar por estado de completado"),
+    view: Optional[str] = Query(None, pattern="^(home|tasks)$", description="Vista de filtrado inteligente: home (pendientes próximos 7 días), tasks (pendientes sin límite de fecha)"),
+    is_completed: Optional[bool] = Query(None, description="Filtrar por estado de completado (ignorado si se usa view)"),
     tag_ids: Optional[List[str]] = Query(None, description="Filtrar por etiquetas (AND: la tarea debe tener TODAS las etiquetas seleccionadas)"),
     priority: Optional[str] = Query(None, pattern="^(baja|media|alta)$", description="Filtrar por prioridad (baja, media, alta)"),
     start_date: Optional[datetime] = Query(None, description="Filtrar desde esta fecha (incluye)"),
     end_date: Optional[datetime] = Query(None, description="Filtrar hasta esta fecha (incluye)"),
     date_field: str = Query("due_date", pattern="^(due_date|updated_at|created_at)$", description="Campo de fecha a usar para el rango"),
-    sort_by: str = Query("updated_at", pattern="^(updated_at|due_date|priority)$", description="Ordenar por fecha o prioridad"),
-    order: str = Query("desc", pattern="^(asc|desc)$", description="Dirección del ordenamiento")
+    sort_by: str = Query("updated_at", pattern="^(updated_at|due_date|priority)$", description="Ordenar por campo (ignorado si se usa view o cursor)"),
+    order: str = Query("desc", pattern="^(asc|desc)$", description="Dirección del ordenamiento (ignorado si se usa view o cursor)"),
+    limit: int = Query(10, ge=1, le=50, description="Número de resultados por página (máximo 50)"),
+    cursor: Optional[str] = Query(None, description="Cursor de paginación: valor de due_date del último resultado recibido (ISO 8601)"),
 ):
     """
-    Obtiene todas las tareas del usuario autenticado, con opciones de filtrado y ordenamiento.
-    Si se proporcionan múltiples etiquetas, se filtran las tareas que contengan TODAS ellas.
+    Obtiene tareas del usuario autenticado con filtrado, ordenamiento y paginación por cursor.
+
+    **Modos de uso:**
+    - `view=home`: tareas pendientes atrasadas + próximos 7 días (sin due_date excluidas).
+    - `view=tasks`: tareas pendientes sin límite de fecha (sin due_date al final).
+    - Sin `view`: comportamiento clásico con filtros manuales.
+
+    Cuando se usa `view` o `cursor`, el ordenamiento es siempre `due_date ASC`.
     """
     try:
         user_id = user.id
-        
-        # Construir la query base
-        # Si filtramos por tags, necesitamos usar inner join (!inner) en task_tags para filtrar las tareas iniciales (candidatas)
-        # En el listado solo necesitamos título de la nota, no el contenido completo
+
         select_query = "*, reminders(*), task_tags(tags(*)), task_notes(notes(id, title)), event_tasks(events(id, title, start_time))"
         if tag_ids:
             select_query = "*, reminders(*), task_tags!inner(tags(*)), task_notes(notes(id, title)), event_tasks(events(id, title, start_time))"
-            
-        query = supabase.table("tasks").select(select_query).eq("user_id", user_id)
-        
-        # Filtros
-        if is_completed is not None:
-            query = query.eq("is_completed", is_completed)
 
+        query = supabase.table("tasks").select(select_query).eq("user_id", user_id)
+
+        # --- Bloque 1: filtrado por vista ---
+        today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+
+        if view == "home":
+            query = query.eq("is_completed", False)
+            max_date = today + timedelta(days=7)
+            query = query.lte("due_date", max_date.isoformat())
+        elif view == "tasks":
+            query = query.eq("is_completed", False)
+        else:
+            if is_completed is not None:
+                query = query.eq("is_completed", is_completed)
+
+        # Filtros adicionales
         if priority:
             query = query.eq("priority", priority)
-            
+
         if tag_ids:
-            # Primero filtramos tareas que tengan AL MENOS UNO de los tags (OR a nivel de DB)
             query = query.in_("task_tags.tag_id", tag_ids)
-        
-        # Filtro por rango de fechas en el campo indicado
+
         if start_date:
             query = query.gte(date_field, start_date.isoformat())
         if end_date:
             query = query.lte(date_field, end_date.isoformat())
-            
-        # Ordenamiento
-        is_desc = (order == "desc")
-        
-        if sort_by == "due_date":
-            query = query.order("due_date", desc=is_desc)
-        elif sort_by == "priority":
-            # Ordenar por prioridad es tricky porque es texto. 
-            # Idealmente mapearíamos a int en DB, pero Supabase/Postgres ordena texto alfabéticamente.
-            # alta < baja < media (alfabético). No es ideal.
-            # Para MVP ordenamos alfabéticamente, o el frontend ordena.
-            # Si queremos orden semántico (Alta > Media > Baja), requeriría una función o columna calculada.
-            # Por ahora ordenamos por la columna texto.
-            query = query.order("priority", desc=is_desc)
+
+        # --- Bloque 2: cursor pagination ---
+        use_cursor_sort = view is not None or cursor is not None
+
+        if cursor:
+            query = query.gt("due_date", cursor)
+
+        if use_cursor_sort:
+            query = query.order("due_date", desc=False)
         else:
-            query = query.order("updated_at", desc=is_desc)
-            
+            is_desc = (order == "desc")
+            if sort_by == "due_date":
+                query = query.order("due_date", desc=is_desc)
+            elif sort_by == "priority":
+                query = query.order("priority", desc=is_desc)
+            else:
+                query = query.order("updated_at", desc=is_desc)
+
+        query = query.limit(limit + 1)
         response = query.execute()
-        
-        tasks = response.data
-        
-        # Procesar y filtrar (AND logic)
+        tasks_raw = response.data
+
+        has_more = len(tasks_raw) > limit
+        tasks_raw = tasks_raw[:limit]
+
+        # Post-procesamiento de relaciones
         final_tasks = []
         required_tag_ids = set(tag_ids) if tag_ids else set()
 
-        for task in tasks:
+        for task in tasks_raw:
             tags_list = []
             found_tag_ids = set()
-            
+
             if "task_tags" in task:
                 for item in task["task_tags"]:
                     if item.get("tags"):
                         tag_data = item["tags"]
                         tags_list.append(tag_data)
                         found_tag_ids.add(str(tag_data.get("id")))
-
             task["tags"] = tags_list
-            # Eliminamos la clave temporal del join
-            if "task_tags" in task:
-                del task["task_tags"]
-            
-            # Mapear reminders
+            del task["task_tags"]
+
             if "reminders" in task:
                 task["reminders_data"] = task["reminders"]
                 del task["reminders"]
             else:
                 task["reminders_data"] = []
 
-            # Process linked notes
             notes_list = []
             if "task_notes" in task:
                 for item in task["task_notes"]:
@@ -190,7 +203,6 @@ async def list_tasks(
                 del task["task_notes"]
             task["notes"] = notes_list
 
-            # Process linked events
             events_list = []
             if "event_tasks" in task:
                 for item in task["event_tasks"]:
@@ -198,16 +210,21 @@ async def list_tasks(
                         events_list.append(item["events"])
                 del task["event_tasks"]
             task["events"] = events_list
-            
-            # Aplicar filtro AND estricto
+
             if tag_ids:
-                # Solo incluimos la tarea si tiene TODOS los tags solicitados
                 if required_tag_ids.issubset(found_tag_ids):
                     final_tasks.append(task)
             else:
                 final_tasks.append(task)
 
-        return final_tasks
+        next_cursor = None
+        if has_more and final_tasks:
+            last_due_date = final_tasks[-1].get("due_date")
+            if last_due_date:
+                next_cursor = last_due_date
+
+        return PaginatedTaskResponse(data=final_tasks, next_cursor=next_cursor, has_more=has_more)
+
     except Exception as e:
         logger.error(f"Error listando tareas: {e}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -264,6 +281,31 @@ async def get_task(task_id: str, user=Depends(get_current_user)):
         return task
     except Exception as e:
         logger.error(f"Error obteniendo tarea: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/{task_id}/related", response_model=TaskRelatedResponse, summary="Obtener notas y eventos vinculados a una tarea")
+async def get_task_related(task_id: str, user=Depends(get_current_user)):
+    """
+    Retorna solo las notas y eventos vinculados a una tarea, sin recargar el detalle completo.
+    Útil para sincronizar el estado local después de un optimistic update fallido en vínculos.
+    """
+    try:
+        user_id = user.id
+
+        task_check = supabase.table("tasks").select("id").eq("id", task_id).eq("user_id", user_id).execute()
+        if not task_check.data:
+            raise HTTPException(status_code=404, detail="Tarea no encontrada")
+
+        notes_res = supabase.table("task_notes").select("notes(id, title, content)").eq("task_id", task_id).execute()
+        notes_list = [item["notes"] for item in (notes_res.data or []) if item.get("notes")]
+
+        events_res = supabase.table("event_tasks").select("events(id, title, start_time)").eq("task_id", task_id).execute()
+        events_list = [item["events"] for item in (events_res.data or []) if item.get("events")]
+
+        return TaskRelatedResponse(notes=notes_list, events=events_list)
+
+    except Exception as e:
+        logger.error(f"Error obteniendo relaciones de tarea: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.patch("/{task_id}", response_model=TaskResponse, summary="Actualizar una tarea")

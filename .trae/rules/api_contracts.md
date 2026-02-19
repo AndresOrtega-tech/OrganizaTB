@@ -144,6 +144,48 @@ Este documento sirve como referencia de los formatos JSON esperados para las pet
 }
 ```
 
+### Listar Tareas (Paginado con cursor)
+**GET** `/api/tasks/`
+
+**Query params:**
+| Param | Tipo | Default | Descripción |
+|-------|------|---------|-------------|
+| `view` | `home` \| `tasks` | — | Filtrado inteligente por vista |
+| `limit` | int (1–50) | `10` | Items por página |
+| `cursor` | string (ISO 8601) | — | `due_date` del último item recibido |
+| `is_completed` | bool | — | Ignorado si se usa `view` |
+| `priority` | `baja`\|`media`\|`alta` | — | Filtro de prioridad |
+| `tag_ids` | string[] | — | AND: tarea debe tener TODOS los tags |
+| `start_date` / `end_date` | datetime | — | Rango de fechas |
+| `date_field` | `due_date`\|`updated_at`\|`created_at` | `due_date` | Campo del rango |
+| `sort_by` | `updated_at`\|`due_date`\|`priority` | `updated_at` | Ignorado si `view` o `cursor` |
+| `order` | `asc`\|`desc` | `desc` | Ignorado si `view` o `cursor` |
+
+**Response (200 OK):**
+```json
+{
+  "data": [
+    {
+      "id": "013e0fc6-c127-435e-8821-b883774dc19d",
+      "title": "Entregar informe",
+      "due_date": "2026-02-20T10:00:00+00:00",
+      "is_completed": false,
+      "priority": "alta",
+      "tags": [],
+      "notes": [],
+      "events": [],
+      "reminders_data": [],
+      "has_reminder": false
+    }
+  ],
+  "next_cursor": "2026-02-20T10:00:00+00:00",
+  "has_more": true
+}
+```
+> `next_cursor` es `null` cuando no hay más páginas o el último item no tiene `due_date`.
+
+---
+
 ### Obtener Tarea (Con relaciones completas)
 **GET** `/api/tasks/{id}`
 
@@ -186,6 +228,22 @@ Este documento sirve como referencia de los formatos JSON esperados para las pet
   "has_reminder": true
 }
 ```
+
+### Obtener relaciones de una tarea (notas y eventos)
+**GET** `/api/tasks/{id}/related`
+
+**Response (200 OK):**
+```json
+{
+  "notes": [
+    { "id": "a8efc7c2-...", "title": "Nota de reunión", "content": "..." }
+  ],
+  "events": [
+    { "id": "7469c3b7-...", "title": "Reunión Q1", "start_time": "2026-02-20T10:00:00Z" }
+  ]
+}
+```
+> Usar solo para sincronizar relaciones tras un optimistic update fallido. Para el detalle completo, usar `GET /api/tasks/{id}`.
 
 ---
 

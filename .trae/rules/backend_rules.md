@@ -117,3 +117,25 @@ Si el API expone un campo con nombre diferente al de la BD (ej. `avatar` vs `ava
     1. Usar `!inner` en la query para filtrar candidatos (OR).
     2. Realizar el filtrado estricto (AND) en memoria (Python) verificando `required_tags.issubset(found_tags)`.
 - **Deprecaciones:** Usar `pattern` en lugar de `regex` en `Query` de FastAPI.
+
+### 5. Filtrado por Vista (`view` param)
+Para endpoints que sirven a múltiples vistas del frontend con necesidades distintas, usar un param `view` en lugar de duplicar endpoints.
+- **Retrocompatible:** si no se envía `view`, el comportamiento es el clásico con filtros manuales.
+- **`view` sobreescribe filtros implícitos:** cuando se usa `view`, parámetros como `is_completed` se ignoran (view los aplica automáticamente).
+- **Uso de `datetime.now(timezone.utc)`** para calcular rangos de fecha (no usar `datetime.utcnow()`, está deprecado).
+
+### 6. Paginación por Cursor
+Para endpoints con grandes volúmenes de datos, usar cursor pagination basado en el campo de ordenamiento principal (generalmente `due_date`).
+- **Patrón:**
+  1. El cliente envía `cursor` (valor ISO 8601 del último item recibido) y `limit`.
+  2. El backend filtra `campo > cursor` y solicita `limit + 1` registros.
+  3. Si `len(results) > limit` → `has_more = True`, recortar a `limit` items.
+  4. `next_cursor` = `due_date` del último item cuando `has_more = True` (null si no hay más o si el item no tiene due_date).
+- **Sort obligatorio:** cuando se usa cursor o `view`, forzar `ORDER BY due_date ASC` para consistencia.
+- **Nulls:** en Postgres, `ORDER BY due_date ASC` pone NULLs al final por defecto — no necesita configuración extra.
+- **Response model:** usar `PaginatedResponse` con forma `{ data, next_cursor, has_more }`.
+
+### 7. Índices Compuestos (Supabase)
+- Guardar las migraciones SQL en `migrations/` con nombre `NNN_descripcion.sql`.
+- Crear índices compuestos para columnas que se combinan frecuentemente en queries: `(user_id, is_completed, due_date)`.
+- Usar `CREATE INDEX IF NOT EXISTS` para idempotencia.
