@@ -1,8 +1,7 @@
 ---
 alwaysApply: false
-scope: database
+description: Reglas de base de datos con Supabase PostgreSQL.
 ---
-
 # Base de Datos
 - Supabase PostgreSQL con RLS habilitado.
 - IDs UUID con FKs y ON DELETE CASCADE.

@@ -111,7 +111,7 @@ Este documento define el funcionamiento del módulo de tareas, incluyendo reglas
 
 ### Obtener relaciones de una tarea
 **GET** `/api/tasks/{id}/related`
-
+ 
 **Response (200 OK):**
 ```json
 {
@@ -127,23 +127,7 @@ Este documento define el funcionamiento del módulo de tareas, incluyendo reglas
 }
 ```
 
-### Vincular nota a tarea
-**POST** `/api/tasks/notes`
-
-**Request:**
-```json
-{
-  "task_id": "uuid-task",
-  "note_id": "uuid-note"
-}
-```
-
-**Response (201 Created):**
-```json
-{
-  "message": "Nota vinculada a la tarea exitosamente"
-}
-```
+> Las relaciones entre tareas, notas y eventos se crean y eliminan ahora desde el módulo `Relations`.
 
 ### Vincular etiqueta a tarea
 **POST** `/api/tasks/{id}/tags`

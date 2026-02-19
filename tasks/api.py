@@ -12,7 +12,6 @@ try:
         TaskCreateResponse,
         TaskAssignTags,
         ReminderConfig,
-        TaskLinkNote,
         TaskRelatedResponse,
         PaginatedTaskResponse,
     )
@@ -26,7 +25,6 @@ except ImportError:
         TaskCreateResponse,
         TaskAssignTags,
         ReminderConfig,
-        TaskLinkNote,
         TaskRelatedResponse,
         PaginatedTaskResponse,
     )
@@ -530,57 +528,6 @@ async def assign_tag_to_task(task_id: str, assignment: TaskAssignTags, user=Depe
         logger.error(f"Error asignando etiquetas: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.post("/notes", status_code=status.HTTP_201_CREATED, summary="Vincular nota a tarea")
-async def link_note_to_task(link: TaskLinkNote, user=Depends(get_current_user)):
-    """
-    Crea una relación entre una tarea y una nota. Ambas deben pertenecer al usuario.
-    """
-    try:
-        user_id = user.id
-        
-        # 1. Verificar propiedad de tarea
-        task_check = supabase.table("tasks").select("id").eq("id", link.task_id).eq("user_id", user_id).execute()
-        if not task_check.data:
-            raise HTTPException(status_code=404, detail="Tarea no encontrada")
-
-        # 2. Verificar propiedad de nota
-        note_check = supabase.table("notes").select("id").eq("id", link.note_id).eq("user_id", user_id).execute()
-        if not note_check.data:
-            raise HTTPException(status_code=404, detail="Nota no encontrada")
-            
-        # 3. Insertar relación
-        # Usamos upsert o ignore por si ya existe
-        response = supabase.table("task_notes").upsert({
-            "task_id": link.task_id,
-            "note_id": link.note_id
-        }, on_conflict="task_id, note_id", ignore_duplicates=True).execute()
-        
-        return {"message": "Nota vinculada a la tarea exitosamente"}
-        
-    except Exception as e:
-        logger.error(f"Error vinculando nota a tarea: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.delete("/{task_id}/notes/{note_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Desvincular nota de tarea")
-async def unlink_note_from_task(task_id: str, note_id: str, user=Depends(get_current_user)):
-    """
-    Elimina la relación entre una tarea y una nota.
-    """
-    try:
-        user_id = user.id
-        
-        # Verificar propiedad de tarea (la política RLS lo haría, pero validamos para 404)
-        task_check = supabase.table("tasks").select("id").eq("id", task_id).eq("user_id", user_id).execute()
-        if not task_check.data:
-             raise HTTPException(status_code=404, detail="Tarea no encontrada")
-
-        response = supabase.table("task_notes").delete().eq("task_id", task_id).eq("note_id", note_id).execute()
-        
-        return None
-    except Exception as e:
-         logger.error(f"Error desvinculando nota: {e}")
-         raise HTTPException(status_code=400, detail=str(e))
-
 @router.delete("/{task_id}/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Desvincular etiqueta de tarea")
 async def remove_tag_from_task(task_id: str, tag_id: str, user=Depends(get_current_user)):
     """
@@ -595,7 +542,7 @@ async def remove_tag_from_task(task_id: str, tag_id: str, user=Depends(get_curre
             raise HTTPException(status_code=404, detail="Tarea no encontrada o no te pertenece")
 
         # 2. Eliminar la relación en task_tags
-        response = supabase.table("task_tags").delete().eq("task_id", task_id).eq("tag_id", tag_id).execute()
+        supabase.table("task_tags").delete().eq("task_id", task_id).eq("tag_id", tag_id).execute()
 
         return None
 

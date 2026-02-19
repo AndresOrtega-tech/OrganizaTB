@@ -32,10 +32,6 @@ class TaskUpdate(BaseModel):
 class TaskAssignTags(BaseModel):
     tag_id: str = Field(..., description="ID de la etiqueta a asignar")
 
-class TaskLinkNote(BaseModel):
-    task_id: str = Field(..., description="ID de la tarea")
-    note_id: str = Field(..., description="ID de la nota a vincular")
-
 class TaskCreateResponse(TaskBase):
     id: str
     user_id: str
