@@ -70,8 +70,8 @@ async def list_notes(
 
         query = supabase.table("notes").select(select_query).eq("user_id", user_id)
         
-        if is_archived is not None:
-            query = query.eq("is_archived", is_archived)
+        effective_archived = is_archived if is_archived is not None else False
+        query = query.eq("is_archived", effective_archived)
             
         if tag_ids:
             query = query.in_("note_tags.tag_id", tag_ids)
