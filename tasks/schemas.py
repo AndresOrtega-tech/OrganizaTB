@@ -54,6 +54,7 @@ class TaskResponse(TaskBase):
     updated_at: datetime
     reminders_data: List[ReminderResponse] = Field(default=[], description="Lista de recordatorios generados")
     has_reminder: bool = False
+    tags: List["TaskRelatedTag"] = Field(default=[], description="Etiquetas vinculadas a la tarea")
 
     class Config:
         from_attributes = True

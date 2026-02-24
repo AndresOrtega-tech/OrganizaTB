@@ -61,11 +61,35 @@ Este documento define el funcionamiento del módulo de tareas, incluyendo reglas
 **Response (200 OK):**
 ```json
 {
-  "data": [],
+  "data": [
+    {
+      "id": "uuid-task",
+      "title": "Nueva tarea",
+      "description": "Detalle opcional",
+      "due_date": "2026-02-19T10:00:00Z",
+      "is_completed": false,
+      "priority": "alta",
+      "user_id": "uuid-user",
+      "calendar_event_id": "uuid-task",
+      "media_url": null,
+      "created_at": "2026-02-18T10:00:00Z",
+      "updated_at": "2026-02-18T10:00:00Z",
+      "has_reminder": true,
+      "reminders_data": [
+        { "id": "uuid-reminder", "remind_at": "2026-02-19T09:30:00Z", "status": "pending" }
+      ],
+      "tags": [
+        { "id": "uuid-tag", "name": "Trabajo", "color": "#FF5733", "icon": "briefcase" }
+      ]
+    }
+  ],
   "next_cursor": null,
   "has_more": false
 }
 ```
+
+> `tags` siempre está presente en cada ítem del listado (array vacío si no tiene etiquetas).
+> El filtro `tag_ids` aplica AND: solo retorna tareas que tengan **todas** las etiquetas indicadas.
 
 ### Reglas de `view=home`
 - Ventana: `hoy` → `hoy + 7 días`.
@@ -145,3 +169,4 @@ Este documento define el funcionamiento del módulo de tareas, incluyendo reglas
 ## 2. Notas de implementación
 - `calendar_event_id` se iguala al `id` de la tarea al crearla.
 - `reminders_data` se calcula desde `reminders` cuando hay `due_date`.
+- `GET /api/tasks/` incluye `tags` (id, name, color, icon) en cada tarea del listado. `GET /api/tasks/{id}` **no** incluye tags; para obtenerlas usar `/related`.

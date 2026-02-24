@@ -136,6 +136,16 @@ async def list_tasks(
             else:
                 task["reminders_data"] = []
 
+        def extract_tags(task: dict) -> None:
+            # Extrae tags del join task_tags y las pone en task["tags"]
+            tags_list = []
+            if "task_tags" in task:
+                for item in task["task_tags"]:
+                    if item.get("tags"):
+                        tags_list.append(item["tags"])
+                del task["task_tags"]
+            task["tags"] = tags_list
+
         if effective_view == "home":
             # Ignorar filtros manipulables y limitar el conjunto en BD a la ventana relevante
             today_iso = today.isoformat()
@@ -152,7 +162,7 @@ async def list_tasks(
             response = (
                 supabase
                 .table("tasks")
-                .select("*, reminders(*)")
+                .select("*, reminders(*), task_tags(tags(id, name, color, icon))")
                 .eq("user_id", user_id)
                 .or_(or_condition)
                 .execute()
@@ -207,6 +217,7 @@ async def list_tasks(
 
             for task in page:
                 map_reminders(task)
+                extract_tags(task)
                 if "_due_dt" in task:
                     del task["_due_dt"]
 
@@ -219,9 +230,11 @@ async def list_tasks(
         # view=tasks (o modo por defecto)
         effective_tab = tab or "pending"
 
-        select_query = "*, reminders(*)"
+        # Siempre traemos tags; si hay filtro por tag_ids usamos !inner para filtrar
         if tag_ids:
-            select_query = "*, reminders(*), task_tags!inner(tags(id))"
+            select_query = "*, reminders(*), task_tags!inner(tags(id, name, color, icon))"
+        else:
+            select_query = "*, reminders(*), task_tags(tags(id, name, color, icon))"
 
         query = supabase.table("tasks").select(select_query).eq("user_id", user_id)
 
@@ -240,13 +253,17 @@ async def list_tasks(
         filtered = []
 
         for task in tasks:
+            # Extraer tags y aplicar filtro AND si corresponde
             found_tag_ids = set()
+            tags_list = []
             if "task_tags" in task:
                 for item in task["task_tags"]:
                     if item.get("tags"):
                         tag_data = item["tags"]
                         found_tag_ids.add(str(tag_data.get("id")))
+                        tags_list.append(tag_data)
                 del task["task_tags"]
+            task["tags"] = tags_list
 
             if tag_ids and not required_tag_ids.issubset(found_tag_ids):
                 continue
