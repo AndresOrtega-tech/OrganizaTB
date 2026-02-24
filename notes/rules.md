@@ -47,7 +47,7 @@ Este documento define el funcionamiento del módulo de notas, incluyendo reglas 
 **Query params:**
 - `is_archived`: `true` | `false` (default `false`)
 - `tag_ids`: array de UUID (AND, la nota debe tener TODAS las etiquetas)
-- `sort_by`: `updated_at` | `created_at` (default `updated_at`)
+- `sort_by`: `updated_at` (único valor soportado, default `updated_at`)
 - `order`: `asc` | `desc` (default `desc`)
 - `limit`: entero positivo (opcional, el frontend lo controla)
 
@@ -63,12 +63,15 @@ Este documento define el funcionamiento del módulo de notas, incluyendo reglas 
     "user_id": "uuid-user",
     "media_url": null,
     "created_at": "2026-02-19T10:00:00Z",
-    "updated_at": "2026-02-19T10:00:00Z"
+    "updated_at": "2026-02-19T10:00:00Z",
+    "tags": [
+      { "id": "uuid-tag", "name": "Trabajo", "color": "#FF5733", "icon": "briefcase" }
+    ]
   }
 ]
 ```
 
-> El listado no incluye `tags`, `tasks` ni `events` en ningún item.
+> `tags` siempre está presente en cada ítem (array vacío si no tiene etiquetas). El filtro `tag_ids` aplica AND.
 
 ### Reglas del listado
 - Por defecto (`is_archived` no enviado o `false`): solo notas no archivadas.
@@ -201,7 +204,8 @@ Los siguientes cambios rompen la versión anterior del módulo y deben aplicarse
 | Vinculación con tasks/events | No existía en notas | Se maneja desde `/api/relations` |
 
 ## 3. Notas de implementación
-- `NoteResponse` y `NoteCreate` responden sin relaciones embebidas. Eliminar los campos `tags`, `tasks` y `events` del schema `NoteResponse`.
+- `NoteResponse` incluye `tags` (id, name, color, icon) en el listado. `GET /api/notes/{id}` **no** incluye tags; para obtenerlas usar `/related`.
 - `GET /api/notes/{id}/related` consulta: `note_tags` → `tags`, `task_notes` → `tasks`, `event_notes` → `events`.
+- `sort_by` actualmente solo soporta `updated_at`. No hay soporte para `created_at` en el backend.
 - El campo `summary` es opcional, puede ser llenado manualmente o por IA en el futuro.
 - `media_url` es opcional, reservado para soporte futuro de archivos adjuntos.

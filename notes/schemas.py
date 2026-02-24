@@ -2,10 +2,16 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
 
-try:
-    from backend.tags.schemas import TagResponse
-except ImportError:
-    from tags.schemas import TagResponse
+
+class TagSummary(BaseModel):
+    """Representación ligera de una tag para embeber en notas."""
+    id: str
+    name: str
+    color: Optional[str] = None
+    icon: Optional[str] = None
+
+    class Config:
+        from_attributes = True
 
 
 class NoteBase(BaseModel):
@@ -53,12 +59,13 @@ class NoteResponse(NoteBase):
     media_url: Optional[str]
     created_at: datetime
     updated_at: datetime
+    tags: List[TagSummary] = Field(default=[], description="Etiquetas vinculadas a la nota")
 
     class Config:
         from_attributes = True
 
 
 class NoteRelatedResponse(BaseModel):
-    tags: List[TagResponse]
+    tags: List[TagSummary]
     tasks: List[TaskSummary]
     events: List[EventSummary]

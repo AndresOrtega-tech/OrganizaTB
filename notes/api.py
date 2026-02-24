@@ -64,9 +64,11 @@ async def list_notes(
     try:
         user_id = user.id
 
-        select_query = "*"
+        # Siempre traemos tags; !inner solo para filtrar
         if tag_ids:
-            select_query = "*, note_tags!inner(tags(id))"
+            select_query = "*, note_tags!inner(tags(id, name, color, icon))"
+        else:
+            select_query = "*, note_tags(tags(id, name, color, icon))"
 
         query = supabase.table("notes").select(select_query).eq("user_id", user_id)
         
@@ -91,14 +93,16 @@ async def list_notes(
 
         for note in notes:
             found_tag_ids = set()
+            tags_list = []
 
             if "note_tags" in note:
                 for item in note["note_tags"]:
                     if item.get("tags"):
                         tag_data = item["tags"]
                         found_tag_ids.add(str(tag_data.get("id")))
-
+                        tags_list.append(tag_data)
                 del note["note_tags"]
+            note["tags"] = tags_list
 
             if tag_ids:
                 if required_tag_ids.issubset(found_tag_ids):
