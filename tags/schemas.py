@@ -23,6 +23,7 @@ class TagCreate(TagBase):
 class TagUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=50)
     color: Optional[str] = None
+    icon: Optional[str] = Field(None, description="Icono de la etiqueta")
 
     @validator("color")
     def validate_hex_color(cls, v):

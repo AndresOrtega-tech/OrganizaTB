@@ -7,22 +7,16 @@ scope: events
 
 Este documento define el funcionamiento del módulo de eventos, incluyendo reglas de filtrado, ordenamiento y contratos de request/response. Mantenerlo actualizado con cualquier cambio en `events/api.py` y `events/schemas.py`.
 
-## 1. Estado actual y deuda técnica pendiente
+## 1. Estado y Arquitectura
 
-El módulo de eventos está en un estado intermedio de refactorización. Actualmente `EventResponse` embebe `tasks` y `notes` directamente, igual que lo hacía `NoteResponse` antes de ser refactorizado. La migración pendiente es:
-
-| Qué cambiar | Estado actual | Estado objetivo |
-|---|---|---|
-| `EventResponse` embebe `tasks` y `notes` | Sí | Solo campos base |
-| Endpoints de vinculación task/note en Events | Existen en `/api/events/tasks` y `/api/events/notes` | Migrar a `/api/relations` |
-| `GET /api/events/{id}/related` | No existe aún | Implementar (mismo patrón que Tasks y Notes) |
-| Vinculación de tags en Events | No existe aún | `POST /api/events/{id}/tags` + `DELETE /api/events/{id}/tags/{tag_id}` |
-
-Hasta que se complete la migración, los endpoints de vinculación en Events siguen funcionando. Una vez migrados a Relations, quedan **deprecados**.
+El módulo de Eventos sigue la arquitectura estándar de separación:
+1. `EventResponse` **solo** incluye sus campos propios, recordatorios vinculados (`reminders_data`), y las etiquetas vinculadas (`tags`).
+2. Las relaciones **hacia** otras entidades principales (tareas, notas) no se embeben en la respuesta base. Se consultan a través de `/api/events/{id}/related`.
+3. Todos los endpoints de vinculación entre eventos y (tareas/notas) viven en `relations/api.py`.
 
 ---
 
-## 2. Endpoints (Events)
+## 2. Endpoints Principales
 
 ### Crear evento
 **POST** `/api/events/`
@@ -59,12 +53,9 @@ Hasta que se complete la migración, los endpoints de vinculación en Events sig
   "reminders_data": [
     { "id": "uuid-reminder", "remind_at": "2026-02-20T09:30:00Z", "status": "pending" }
   ],
-  "tasks": [],
-  "notes": []
+  "tags": []
 }
 ```
-
-> `tasks` y `notes` se retornan vacíos en la creación. Esto cambiará cuando `EventResponse` sea refactorizado para no embeber relaciones (igual que se hizo con Notes).
 
 ---
 
@@ -75,9 +66,9 @@ Hasta que se complete la migración, los endpoints de vinculación en Events sig
 - `start_date`: ISO 8601 — filtrar eventos desde esta fecha (inclusive)
 - `end_date`: ISO 8601 — filtrar eventos hasta esta fecha (inclusive)
 
-**Response (200 OK):** array de `EventResponse`.
+**Response (200 OK):** array de `EventResponse`. Todos los eventos retornados incluirán sus `tags` vinculadas embebidas en la respuesta, estructuradas como `[{"id": "...", "name": "...", "color": "...", "icon": "..."}]`.
 
-### Reglas del listado
+**Reglas del listado:**
 - Sin filtros: retorna todos los eventos del usuario, ordenados por `start_time` asc.
 - Con `start_date` y/o `end_date`: filtra eventos cuyo `start_time` esté dentro del rango.
 - No hay paginación cursor en eventos (a diferencia de Tasks). Se retornan todos los que coinciden.
@@ -88,7 +79,7 @@ Hasta que se complete la migración, los endpoints de vinculación en Events sig
 ### Obtener evento por ID
 **GET** `/api/events/{event_id}`
 
-**Response (200 OK):** misma estructura que POST.
+**Response (200 OK):** misma estructura que POST. Incluye la lista embebida de `tags`.
 
 ---
 
@@ -108,7 +99,7 @@ Hasta que se complete la migración, los endpoints de vinculación en Events sig
 }
 ```
 
-**Response (200 OK):** misma estructura que GET.
+**Response (200 OK):** misma estructura que GET. Incluye sus `tags`.
 
 > Si se envía `reminders`, reemplaza completamente los recordatorios existentes (mismo comportamiento que Tasks).
 
@@ -121,22 +112,9 @@ Hasta que se complete la migración, los endpoints de vinculación en Events sig
 
 ---
 
-## 3. Endpoints de vinculación (pendientes de migración a Relations)
+## 3. Endpoints de Relaciones (Related & Tags)
 
-Estos endpoints existen actualmente en el módulo de Events pero serán deprecados y reemplazados por `/api/relations`. Se documentan aquí temporalmente.
-
-| Endpoint actual (deprecado) | Reemplazado por |
-|---|---|
-| `POST /api/events/tasks` | `POST /api/relations/task-event` |
-| `DELETE /api/events/{event_id}/tasks/{task_id}` | `DELETE /api/relations/task-event` |
-| `POST /api/events/notes` | `POST /api/relations/note-event` |
-| `DELETE /api/events/{event_id}/notes/{note_id}` | `DELETE /api/relations/note-event` |
-
----
-
-## 4. Endpoints pendientes de implementación
-
-### Obtener relaciones de un evento
+### Obtener relaciones cruzadas de un evento
 **GET** `/api/events/{event_id}/related`
 
 **Response esperada (200 OK):**
@@ -180,7 +158,7 @@ Estos endpoints existen actualmente en el módulo de Events pero serán deprecad
 
 ---
 
-## 5. Tabla de base de datos utilizada
+## 4. Tabla de base de datos utilizada
 
 | Campo | Tipo | Descripción |
 |---|---|---|
@@ -197,8 +175,7 @@ Estos endpoints existen actualmente en el módulo de Events pero serán deprecad
 
 Las relaciones con tareas y notas se almacenan en `event_tasks` y `event_notes`. Las etiquetas en `event_tags`.
 
-## 6. Notas de implementación
+## 5. Notas de implementación
 - `reminders` en eventos sigue exactamente el mismo patrón que en Tasks: `remind_at = start_time - offset`.
 - `has_reminder` se actualiza automáticamente al crear/modificar recordatorios.
 - El backend debe validar que `end_time > start_time`.
-- La migración completa de este módulo sigue el mismo proceso que se hizo con Notes: limpiar `EventResponse`, crear `/related`, mover vinculaciones a Relations.

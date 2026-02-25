@@ -3,9 +3,9 @@ from typing import Optional, List
 from datetime import datetime
 from tasks.schemas import ReminderConfig, ReminderResponse
 try:
-    from backend.tags.schemas import TagResponse
+    from backend.notes.schemas import TagSummary
 except ImportError:
-    from tags.schemas import TagResponse
+    from notes.schemas import TagSummary
 
 class EventBase(BaseModel):
     title: str = Field(..., min_length=1, description="Título del evento")
@@ -27,13 +27,8 @@ class EventUpdate(BaseModel):
     is_all_day: Optional[bool] = None
     reminders: Optional[List[ReminderConfig]] = Field(None, description="Nueva lista de recordatorios")
 
-class EventLinkTask(BaseModel):
-    event_id: str
-    task_id: str
-
-class EventLinkNote(BaseModel):
-    event_id: str
-    note_id: str
+class EventAssignTag(BaseModel):
+    tag_id: str = Field(..., description="ID de la etiqueta a asignar al evento")
 
 class TaskSummary(BaseModel):
     id: str
@@ -50,9 +45,13 @@ class EventResponse(EventBase):
     created_at: datetime
     updated_at: datetime
     reminders_data: List[ReminderResponse] = []
-    tasks: List[TaskSummary] = []
-    notes: List[NoteSummary] = []
     has_reminder: bool = False
+    tags: List[TagSummary] = Field(default=[], description="Etiquetas vinculadas al evento")
     
     class Config:
         from_attributes = True
+
+class EventRelatedResponse(BaseModel):
+    tags: List[TagSummary] = []
+    tasks: List[TaskSummary] = []
+    notes: List[NoteSummary] = []
