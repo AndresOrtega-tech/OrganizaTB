@@ -207,6 +207,15 @@ async def update_event(event_id: str, update: EventUpdate, user=Depends(get_curr
         rem_res = supabase.table("reminders").select("*").eq("event_id", event_id).execute()
         updated_event["reminders_data"] = rem_res.data or []
         
+        # Procesar etiquetas vinculadas para que el PATCH retorne la entidad igual al GET
+        tags_res = supabase.table("event_tags").select("tags(id, name, color, icon)").eq("event_id", event_id).execute()
+        tags_list = []
+        if tags_res.data:
+            for item in tags_res.data:
+                if isinstance(item, dict) and item.get("tags"):
+                    tags_list.append(item["tags"])
+        updated_event["tags"] = tags_list
+        
         return updated_event
         
     except Exception as e:

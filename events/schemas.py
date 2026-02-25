@@ -3,9 +3,9 @@ from typing import Optional, List
 from datetime import datetime
 from tasks.schemas import ReminderConfig, ReminderResponse
 try:
-    from backend.notes.schemas import TagSummary
+    from backend.tags.schemas import TagSummary
 except ImportError:
-    from notes.schemas import TagSummary
+    from tags.schemas import TagSummary
 
 class EventBase(BaseModel):
     title: str = Field(..., min_length=1, description="Título del evento")

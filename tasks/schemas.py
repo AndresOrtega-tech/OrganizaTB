@@ -1,6 +1,10 @@
 from pydantic import BaseModel, Field, validator
 from typing import Optional, List, Literal
 from datetime import datetime
+try:
+    from backend.tags.schemas import TagSummary
+except ImportError:
+    from tags.schemas import TagSummary
 
 class ReminderConfig(BaseModel):
     value: int = Field(..., gt=0, description="Cantidad de tiempo antes del vencimiento")
@@ -54,16 +58,12 @@ class TaskResponse(TaskBase):
     updated_at: datetime
     reminders_data: List[ReminderResponse] = Field(default=[], description="Lista de recordatorios generados")
     has_reminder: bool = False
-    tags: List["TaskRelatedTag"] = Field(default=[], description="Etiquetas vinculadas a la tarea")
+    tags: List[TagSummary] = Field(default=[], description="Etiquetas vinculadas a la tarea")
 
     class Config:
         from_attributes = True
 
-class TaskRelatedTag(BaseModel):
-    id: str
-    name: str
-    color: Optional[str] = None
-    icon: Optional[str] = None
+
 
 class TaskRelatedNote(BaseModel):
     id: str
@@ -76,7 +76,7 @@ class TaskRelatedEvent(BaseModel):
     start_time: datetime
 
 class TaskRelatedResponse(BaseModel):
-    tags: List[TaskRelatedTag] = []
+    tags: List[TagSummary] = []
     notes: List[TaskRelatedNote] = []
     events: List[TaskRelatedEvent] = []
 

@@ -16,6 +16,17 @@ class TagBase(BaseModel):
             raise ValueError("El color debe estar en formato Hex válido (ej. #FF0000)")
         return v
 
+class TagSummary(BaseModel):
+    """Representación ligera de una tag para embeber en otras entidades (notas, eventos, tareas)."""
+    id: str
+    name: str
+    color: Optional[str] = None
+    icon: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
 class TagCreate(TagBase):
     pass
     # icon se omite aquí porque se manejará como null internamente por ahora

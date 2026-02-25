@@ -2,16 +2,10 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
 
-
-class TagSummary(BaseModel):
-    """Representación ligera de una tag para embeber en notas."""
-    id: str
-    name: str
-    color: Optional[str] = None
-    icon: Optional[str] = None
-
-    class Config:
-        from_attributes = True
+try:
+    from backend.tags.schemas import TagSummary
+except ImportError:
+    from tags.schemas import TagSummary
 
 
 class NoteBase(BaseModel):
