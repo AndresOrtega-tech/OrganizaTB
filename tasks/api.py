@@ -5,11 +5,29 @@ from datetime import datetime, timedelta, timezone
 
 try:
     from backend.database import supabase
-    from backend.tasks.schemas import TaskCreate, TaskUpdate, TaskResponse, TaskAssignTags, ReminderConfig, TaskLinkNote, PaginatedTaskResponse, TaskRelatedResponse
+    from backend.tasks.schemas import (
+        TaskCreate,
+        TaskUpdate,
+        TaskResponse,
+        TaskCreateResponse,
+        TaskAssignTags,
+        ReminderConfig,
+        TaskRelatedResponse,
+        PaginatedTaskResponse,
+    )
     from backend.auth.dependencies import get_current_user
 except ImportError:
     from database import supabase
-    from tasks.schemas import TaskCreate, TaskUpdate, TaskResponse, TaskAssignTags, ReminderConfig, TaskLinkNote, PaginatedTaskResponse, TaskRelatedResponse
+    from tasks.schemas import (
+        TaskCreate,
+        TaskUpdate,
+        TaskResponse,
+        TaskCreateResponse,
+        TaskAssignTags,
+        ReminderConfig,
+        TaskRelatedResponse,
+        PaginatedTaskResponse,
+    )
     from auth.dependencies import get_current_user
 import logging
 
@@ -28,7 +46,7 @@ def calculate_remind_at(due_date: datetime, reminder: ReminderConfig) -> datetim
     
     return due_date - delta
 
-@router.post("/", response_model=TaskResponse, status_code=status.HTTP_201_CREATED, summary="Crear una nueva tarea")
+@router.post("/", response_model=TaskCreateResponse, status_code=status.HTTP_201_CREATED, summary="Crear una nueva tarea")
 async def create_task(task: TaskCreate, user=Depends(get_current_user)):
     """
     Crea una nueva tarea para el usuario autenticado.
@@ -92,17 +110,13 @@ async def create_task(task: TaskCreate, user=Depends(get_current_user)):
 @router.get("/", response_model=PaginatedTaskResponse, summary="Listar todas las tareas del usuario")
 async def list_tasks(
     user=Depends(get_current_user),
-    view: Optional[str] = Query(None, pattern="^(home|tasks)$", description="Vista de filtrado inteligente: home (pendientes próximos 7 días), tasks (pendientes sin límite de fecha)"),
-    is_completed: Optional[bool] = Query(None, description="Filtrar por estado de completado (ignorado si se usa view)"),
+    view: Optional[str] = Query(None, pattern="^(home|tasks)$", description="Modo de vista: home o tasks"),
+    tab: Optional[str] = Query(None, pattern="^(pending|completed)$", description="Tab en view=tasks: pending o completed"),
     tag_ids: Optional[List[str]] = Query(None, description="Filtrar por etiquetas (AND: la tarea debe tener TODAS las etiquetas seleccionadas)"),
     priority: Optional[str] = Query(None, pattern="^(baja|media|alta)$", description="Filtrar por prioridad (baja, media, alta)"),
-    start_date: Optional[datetime] = Query(None, description="Filtrar desde esta fecha (incluye)"),
-    end_date: Optional[datetime] = Query(None, description="Filtrar hasta esta fecha (incluye)"),
-    date_field: str = Query("due_date", pattern="^(due_date|updated_at|created_at)$", description="Campo de fecha a usar para el rango"),
-    sort_by: str = Query("updated_at", pattern="^(updated_at|due_date|priority)$", description="Ordenar por campo (ignorado si se usa view o cursor)"),
-    order: str = Query("desc", pattern="^(asc|desc)$", description="Dirección del ordenamiento (ignorado si se usa view o cursor)"),
-    limit: int = Query(10, ge=1, le=50, description="Número de resultados por página (máximo 50)"),
-    cursor: Optional[str] = Query(None, description="Cursor de paginación: valor de due_date del último resultado recibido (ISO 8601)"),
+    end_date: Optional[datetime] = Query(None, description="Filtrar tareas con due_date hasta esta fecha"),
+    limit: int = Query(10, ge=1, le=50, description="Límite de tareas por página"),
+    cursor: Optional[datetime] = Query(None, description="Cursor de paginación basado en due_date del último resultado")
 ):
     """
     Obtiene tareas del usuario autenticado con filtrado, ordenamiento y paginación por cursor.
@@ -116,149 +130,211 @@ async def list_tasks(
     """
     try:
         user_id = user.id
+        now = datetime.utcnow()
+        today = now.date()
 
-        select_query = "*, reminders(*), task_tags(tags(*)), task_notes(notes(id, title)), event_tasks(events(id, title, start_time))"
-        if tag_ids:
-            select_query = "*, reminders(*), task_tags!inner(tags(*)), task_notes(notes(id, title)), event_tasks(events(id, title, start_time))"
+        effective_view = view or "tasks"
 
-        query = supabase.table("tasks").select(select_query).eq("user_id", user_id)
-
-        # --- Bloque 1: filtrado por vista ---
-        today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-        max_date = None
-
-        if view == "home":
-            max_date = today + timedelta(days=7)
-            query = query.lte("due_date", max_date.isoformat())
-        elif view is None:
-            if is_completed is not None:
-                query = query.eq("is_completed", is_completed)
-
-        # Filtros adicionales
-        if priority:
-            query = query.eq("priority", priority)
-
-        if tag_ids:
-            query = query.in_("task_tags.tag_id", tag_ids)
-
-        if start_date:
-            query = query.gte(date_field, start_date.isoformat())
-        if end_date:
-            query = query.lte(date_field, end_date.isoformat())
-
-        # --- Bloque 2: cursor pagination ---
-        use_cursor_sort = view is not None or cursor is not None
-
-        if cursor:
-            query = query.gt("due_date", cursor)
-
-        if use_cursor_sort:
-            query = query.order("due_date", desc=False)
-        else:
-            is_desc = (order == "desc")
-            if sort_by == "due_date":
-                query = query.order("due_date", desc=is_desc)
-            elif sort_by == "priority":
-                query = query.order("priority", desc=is_desc)
-            else:
-                query = query.order("updated_at", desc=is_desc)
-
-        query = query.limit(limit + 1)
-        response = query.execute()
-        tasks_raw = response.data
-
-        has_more = len(tasks_raw) > limit
-        tasks_raw = tasks_raw[:limit]
-
-        # Post-procesamiento de relaciones
-        final_tasks = []
-        pending_tasks = []
-        completed_tasks = []
-        no_due_pending_tasks = []
-        required_tag_ids = set(tag_ids) if tag_ids else set()
-
-        for task in tasks_raw:
-            if view in ("home", "tasks"):
-                due_date_str = task.get("due_date")
-                if not due_date_str:
-                    if view == "home":
-                        continue
-                    if view == "tasks":
-                        if not task.get("is_completed"):
-                            no_due_pending_tasks.append(task)
-                        continue
-                try:
-                    due_dt = datetime.fromisoformat(due_date_str.replace("Z", "+00:00"))
-                except ValueError:
-                    continue
-
-                if view == "home":
-                    if max_date is not None and due_dt > max_date:
-                        continue
-                    if due_dt < today and task.get("is_completed"):
-                        continue
-                elif view == "tasks":
-                    if due_dt < today and task.get("is_completed"):
-                        continue
-
-            tags_list = []
-            found_tag_ids = set()
-
-            if "task_tags" in task:
-                for item in task["task_tags"]:
-                    if item.get("tags"):
-                        tag_data = item["tags"]
-                        tags_list.append(tag_data)
-                        found_tag_ids.add(str(tag_data.get("id")))
-            task["tags"] = tags_list
-            del task["task_tags"]
-
+        def map_reminders(task: dict) -> None:
             if "reminders" in task:
                 task["reminders_data"] = task["reminders"]
                 del task["reminders"]
             else:
                 task["reminders_data"] = []
 
-            notes_list = []
-            if "task_notes" in task:
-                for item in task["task_notes"]:
-                    if item.get("notes"):
-                        notes_list.append(item["notes"])
-                del task["task_notes"]
-            task["notes"] = notes_list
+        def extract_tags(task: dict) -> None:
+            # Extrae tags del join task_tags y las pone en task["tags"]
+            tags_list = []
+            if "task_tags" in task:
+                for item in task["task_tags"]:
+                    if item.get("tags"):
+                        tags_list.append(item["tags"])
+                del task["task_tags"]
+            task["tags"] = tags_list
 
-            events_list = []
-            if "event_tasks" in task:
-                for item in task["event_tasks"]:
-                    if item.get("events"):
-                        events_list.append(item["events"])
-                del task["event_tasks"]
-            task["events"] = events_list
+        if effective_view == "home":
+            # Ignorar filtros manipulables y limitar el conjunto en BD a la ventana relevante
+            today_iso = today.isoformat()
+            window_end = today + timedelta(days=7)
+            window_end_iso = window_end.isoformat()
+
+            # Tareas pendientes atrasadas (is_completed=false, due_date < hoy)
+            # y tareas (pendientes y completadas) dentro de hoy..hoy+7
+            or_condition = (
+                f"and(is_completed.eq.false,due_date.lt.{today_iso}),"
+                f"and(due_date.gte.{today_iso},due_date.lte.{window_end_iso})"
+            )
+
+            response = (
+                supabase
+                .table("tasks")
+                .select("*, reminders(*), task_tags(tags(id, name, color, icon))")
+                .eq("user_id", user_id)
+                .or_(or_condition)
+                .execute()
+            )
+            tasks = response.data or []
+
+            tasks_with_due_date = []
+            for task in tasks:
+                due = task.get("due_date")
+                if not due:
+                    continue
+                try:
+                    due_dt = datetime.fromisoformat(str(due).replace("Z", "+00:00"))
+                except Exception:
+                    continue
+                task["_due_dt"] = due_dt
+                tasks_with_due_date.append(task)
+
+            overdue_pending = []
+            future_pending = []
+            future_completed = []
+
+            for task in tasks_with_due_date:
+                due_dt = task["_due_dt"]
+                due_date = due_dt.date()
+                is_completed = bool(task.get("is_completed"))
+
+                if not is_completed and due_date < today:
+                    overdue_pending.append(task)
+                elif today <= due_date <= window_end:
+                    if not is_completed:
+                        future_pending.append(task)
+                    else:
+                        future_completed.append(task)
+
+            overdue_pending.sort(key=lambda t: t["_due_dt"])
+            future_pending.sort(key=lambda t: t["_due_dt"])
+            future_completed.sort(key=lambda t: t["_due_dt"])
+
+            ordered = overdue_pending + future_pending + future_completed
+
+            if cursor:
+                ordered = [t for t in ordered if t.get("_due_dt") and t["_due_dt"] > cursor]
+
+            page = ordered[:limit]
+            has_more = len(ordered) > limit
+            next_cursor = None
+            if page and has_more:
+                last_due_dt = page[-1].get("_due_dt")
+                if last_due_dt:
+                    next_cursor = last_due_dt
+
+            for task in page:
+                map_reminders(task)
+                extract_tags(task)
+                if "_due_dt" in task:
+                    del task["_due_dt"]
+
+            return {
+                "data": page,
+                "next_cursor": next_cursor,
+                "has_more": has_more,
+            }
+
+        # view=tasks (o modo por defecto)
+        effective_tab = tab or "pending"
+
+        # Siempre traemos tags; si hay filtro por tag_ids usamos !inner para filtrar
+        if tag_ids:
+            select_query = "*, reminders(*), task_tags!inner(tags(id, name, color, icon))"
+        else:
+            select_query = "*, reminders(*), task_tags(tags(id, name, color, icon))"
+
+        query = supabase.table("tasks").select(select_query).eq("user_id", user_id)
+
+        if effective_tab == "pending":
+            query = query.eq("is_completed", False)
+        else:
+            query = query.eq("is_completed", True)
+
+        if priority:
+            query = query.eq("priority", priority)
+
+        response = query.execute()
+        tasks = response.data or []
+
+        required_tag_ids = set(tag_ids) if tag_ids else set()
+        filtered = []
+
+        for task in tasks:
+            # Extraer tags y aplicar filtro AND si corresponde
+            found_tag_ids = set()
+            tags_list = []
+            if "task_tags" in task:
+                for item in task["task_tags"]:
+                    if item.get("tags"):
+                        tag_data = item["tags"]
+                        found_tag_ids.add(str(tag_data.get("id")))
+                        tags_list.append(tag_data)
+                del task["task_tags"]
+            task["tags"] = tags_list
 
             if tag_ids and not required_tag_ids.issubset(found_tag_ids):
                 continue
 
-            if view == "home":
-                if task.get("is_completed"):
-                    completed_tasks.append(task)
+            due = task.get("due_date")
+            due_dt = None
+            if due:
+                try:
+                    due_dt = datetime.fromisoformat(str(due).replace("Z", "+00:00"))
+                except Exception:
+                    due_dt = None
+
+            if end_date and due_dt and due_dt > end_date:
+                continue
+
+            task["_due_dt"] = due_dt
+            filtered.append(task)
+
+        dated = [t for t in filtered if t["_due_dt"] is not None]
+        no_date = [t for t in filtered if t["_due_dt"] is None]
+
+        if effective_tab == "pending":
+            overdue = []
+            future = []
+            for task in dated:
+                due_date = task["_due_dt"].date()
+                if due_date < today:
+                    overdue.append(task)
                 else:
-                    pending_tasks.append(task)
+                    future.append(task)
+
+            overdue.sort(key=lambda t: t["_due_dt"])
+            future.sort(key=lambda t: t["_due_dt"])
+            ordered = overdue + future + no_date
+        else:
+            dated.sort(key=lambda t: t["_due_dt"], reverse=True)
+            ordered = dated + no_date
+
+        for task in ordered:
+            map_reminders(task)
+            if "_due_dt" in task:
+                del task["_due_dt"]
+
+        if cursor:
+            if effective_tab == "pending":
+                ordered = [t for t in ordered if t.get("due_date") and datetime.fromisoformat(str(t.get("due_date")).replace("Z", "+00:00")) > cursor]
             else:
-                final_tasks.append(task)
+                ordered = [t for t in ordered if t.get("due_date") and datetime.fromisoformat(str(t.get("due_date")).replace("Z", "+00:00")) < cursor]
 
-        if view == "home":
-            final_tasks = pending_tasks + completed_tasks
-        elif view == "tasks":
-            final_tasks = final_tasks + no_due_pending_tasks
-
+        page = ordered[:limit]
+        has_more = len(ordered) > limit
         next_cursor = None
-        if has_more and final_tasks:
-            last_due_date = final_tasks[-1].get("due_date")
-            if last_due_date:
-                next_cursor = last_due_date
+        if page and has_more:
+            last_due = page[-1].get("due_date")
+            if last_due:
+                try:
+                    next_cursor = datetime.fromisoformat(str(last_due).replace("Z", "+00:00"))
+                except Exception:
+                    next_cursor = None
 
-        return PaginatedTaskResponse(data=final_tasks, next_cursor=next_cursor, has_more=has_more)
-
+        return {
+            "data": page,
+            "next_cursor": next_cursor,
+            "has_more": has_more,
+        }
     except Exception as e:
         logger.error(f"Error listando tareas: {e}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -270,41 +346,13 @@ async def get_task(task_id: str, user=Depends(get_current_user)):
     """
     try:
         user_id = user.id
-        response = supabase.table("tasks").select("*, reminders(*), task_tags(tags(*)), task_notes(notes(id, title, content)), event_tasks(events(id, title, start_time))").eq("id", task_id).eq("user_id", user_id).execute()
+        response = supabase.table("tasks").select("*, reminders(*)").eq("id", task_id).eq("user_id", user_id).execute()
         
         if not response.data:
             raise HTTPException(status_code=404, detail="Tarea no encontrada")
             
         task = response.data[0]
         
-        # Procesar tags
-        tags_list = []
-        if "task_tags" in task:
-            for item in task["task_tags"]:
-                if item.get("tags"):
-                    tags_list.append(item["tags"])
-        task["tags"] = tags_list
-        if "task_tags" in task:
-            del task["task_tags"]
-            
-        # Process linked notes
-        notes_list = []
-        if "task_notes" in task:
-            for item in task["task_notes"]:
-                if item.get("notes"):
-                    notes_list.append(item["notes"])
-            del task["task_notes"]
-        task["notes"] = notes_list
-
-        # Process linked events
-        events_list = []
-        if "event_tasks" in task:
-            for item in task["event_tasks"]:
-                if item.get("events"):
-                    events_list.append(item["events"])
-            del task["event_tasks"]
-        task["events"] = events_list
-
         # Mapear recordatorios (ya vienen en el join)
         if "reminders" in task:
             task["reminders_data"] = task["reminders"]
@@ -317,27 +365,44 @@ async def get_task(task_id: str, user=Depends(get_current_user)):
         logger.error(f"Error obteniendo tarea: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/{task_id}/related", response_model=TaskRelatedResponse, summary="Obtener notas y eventos vinculados a una tarea")
+@router.get("/{task_id}/related", response_model=TaskRelatedResponse, summary="Obtener relaciones de una tarea")
 async def get_task_related(task_id: str, user=Depends(get_current_user)):
-    """
-    Retorna solo las notas y eventos vinculados a una tarea, sin recargar el detalle completo.
-    Útil para sincronizar el estado local después de un optimistic update fallido en vínculos.
-    """
     try:
         user_id = user.id
+        response = supabase.table("tasks").select(
+            "task_tags(tags(id, name, color, icon)), "
+            "task_notes(notes(id, title, content)), "
+            "event_tasks(events(id, title, start_time))"
+        ).eq("id", task_id).eq("user_id", user_id).execute()
 
-        task_check = supabase.table("tasks").select("id").eq("id", task_id).eq("user_id", user_id).execute()
-        if not task_check.data:
+        if not response.data:
             raise HTTPException(status_code=404, detail="Tarea no encontrada")
 
-        notes_res = supabase.table("task_notes").select("notes(id, title, content)").eq("task_id", task_id).execute()
-        notes_list = [item["notes"] for item in (notes_res.data or []) if item.get("notes")]
+        task = response.data[0]
 
-        events_res = supabase.table("event_tasks").select("events(id, title, start_time)").eq("task_id", task_id).execute()
-        events_list = [item["events"] for item in (events_res.data or []) if item.get("events")]
+        tags_list = []
+        if "task_tags" in task:
+            for item in task["task_tags"]:
+                if item.get("tags"):
+                    tags_list.append(item["tags"])
 
-        return TaskRelatedResponse(notes=notes_list, events=events_list)
+        notes_list = []
+        if "task_notes" in task:
+            for item in task["task_notes"]:
+                if item.get("notes"):
+                    notes_list.append(item["notes"])
 
+        events_list = []
+        if "event_tasks" in task:
+            for item in task["event_tasks"]:
+                if item.get("events"):
+                    events_list.append(item["events"])
+
+        return {
+            "tags": tags_list,
+            "notes": notes_list,
+            "events": events_list,
+        }
     except Exception as e:
         logger.error(f"Error obteniendo relaciones de tarea: {e}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -352,9 +417,9 @@ async def update_task(task_id: str, task_update: TaskUpdate, user=Depends(get_cu
     try:
         user_id = user.id
         
-        # Filtrar campos que no son None
+        # Filtrar campos según lo que realmente se envió (exclude_unset)
         # Excluimos reminders de update_data porque no es columna de tasks
-        update_data = {k: v for k, v in task_update.dict(exclude={"reminders"}).items() if v is not None}
+        update_data = task_update.dict(exclude={"reminders"}, exclude_unset=True)
         
         # Obtenemos la tarea actual para saber su due_date si no se envía en el update
         current_task_res = supabase.table("tasks").select("due_date, has_reminder").eq("id", task_id).eq("user_id", user_id).execute()
@@ -364,10 +429,14 @@ async def update_task(task_id: str, task_update: TaskUpdate, user=Depends(get_cu
         
         # Determinar nuevo due_date
         new_due_date_str = None
-        if "due_date" in update_data and update_data["due_date"]:
-             new_due_date_str = update_data["due_date"].isoformat()
-             # Actualizamos en el dict para la DB
-             update_data["due_date"] = new_due_date_str
+        if "due_date" in update_data:
+             if update_data["due_date"] is not None:
+                 new_due_date_str = update_data["due_date"].isoformat()
+                 # Actualizamos en el dict para la DB
+                 update_data["due_date"] = new_due_date_str
+             else:
+                 # Se envió due_date explícitamente como null -> lo dejamos como None (DB lo pondrá en NULL)
+                 new_due_date_str = None
         elif current_task.get("due_date"):
              new_due_date_str = current_task.get("due_date")
              
@@ -446,16 +515,15 @@ async def delete_task(task_id: str, user=Depends(get_current_user)):
         logger.error(f"Error eliminando tarea: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.post("/tags", status_code=status.HTTP_200_OK, summary="Asignar etiquetas a una tarea")
-async def assign_tags_to_task(assignment: TaskAssignTags, user=Depends(get_current_user)):
+@router.post("/{task_id}/tags", status_code=status.HTTP_200_OK, summary="Asignar etiqueta a una tarea")
+async def assign_tag_to_task(task_id: str, assignment: TaskAssignTags, user=Depends(get_current_user)):
     """
     Asigna una o más etiquetas a una tarea existente.
     Recibe el ID de la tarea y una lista de IDs de etiquetas.
     """
     try:
         user_id = user.id
-        task_id = assignment.task_id
-        tag_ids = assignment.tag_ids
+        tag_id = assignment.tag_id
 
         # 1. Verificar que la tarea pertenece al usuario
         task_check = supabase.table("tasks").select("id").eq("id", task_id).eq("user_id", user_id).execute()
@@ -467,81 +535,21 @@ async def assign_tags_to_task(assignment: TaskAssignTags, user=Depends(get_curre
         # Si una etiqueta no existe, la inserción fallará por FK si la BD está bien configurada.
         # Pero para mejor UX, intentamos insertar y capturamos error.
 
-        if not tag_ids:
-            return {"message": "No se proporcionaron etiquetas para asignar"}
+        # 2b. Verificar si la relación ya existe (idempotencia)
+        exists = supabase.table("task_tags").select("task_id").eq("task_id", task_id).eq("tag_id", tag_id).execute()
+        if exists.data:
+            return {"message": "Etiqueta asignada correctamente", "assigned": 0}
 
-        # 3. Preparar datos para inserción en task_tags
-        # Nota: Si ya existe la relación, insert fallará si no usamos upsert o ignore.
-        # Supabase-py insert soporta upsert=True? No directamente en insert, sino en upsert().
-        # Pero task_tags es tabla pivote.
-        # Estrategia: Insertar ignorando duplicados si es posible, o manejar error.
-        # O simplemente intentar insertar uno por uno? No, batch es mejor.
-        
-        data_to_insert = [{"task_id": task_id, "tag_id": tag_id} for tag_id in tag_ids]
-        
-        # Usamos upsert para evitar errores de duplicados (on_conflict en task_id, tag_id)
-        # upsert requiere que la tabla tenga restricción unique en esas columnas (que es la PK).
-        response = supabase.table("task_tags").upsert(data_to_insert, on_conflict="task_id, tag_id", ignore_duplicates=True).execute()
+        # 3. Insertar relación
+        response = supabase.table("task_tags").insert({"task_id": task_id, "tag_id": tag_id}).execute()
+        if not response.data:
+            raise HTTPException(status_code=500, detail="No se pudo asignar la etiqueta")
 
-        if hasattr(response, 'error') and response.error:
-             raise Exception(response.error.message)
-
-        return {"message": "Etiquetas asignadas correctamente", "assigned_count": len(tag_ids)}
+        return {"message": "Etiqueta asignada correctamente", "assigned": 1}
 
     except Exception as e:
         logger.error(f"Error asignando etiquetas: {e}")
         raise HTTPException(status_code=400, detail=str(e))
-
-@router.post("/notes", status_code=status.HTTP_201_CREATED, summary="Vincular nota a tarea")
-async def link_note_to_task(link: TaskLinkNote, user=Depends(get_current_user)):
-    """
-    Crea una relación entre una tarea y una nota. Ambas deben pertenecer al usuario.
-    """
-    try:
-        user_id = user.id
-        
-        # 1. Verificar propiedad de tarea
-        task_check = supabase.table("tasks").select("id").eq("id", link.task_id).eq("user_id", user_id).execute()
-        if not task_check.data:
-            raise HTTPException(status_code=404, detail="Tarea no encontrada")
-
-        # 2. Verificar propiedad de nota
-        note_check = supabase.table("notes").select("id").eq("id", link.note_id).eq("user_id", user_id).execute()
-        if not note_check.data:
-            raise HTTPException(status_code=404, detail="Nota no encontrada")
-            
-        # 3. Insertar relación
-        # Usamos upsert o ignore por si ya existe
-        response = supabase.table("task_notes").upsert({
-            "task_id": link.task_id,
-            "note_id": link.note_id
-        }, on_conflict="task_id, note_id", ignore_duplicates=True).execute()
-        
-        return {"message": "Nota vinculada a la tarea exitosamente"}
-        
-    except Exception as e:
-        logger.error(f"Error vinculando nota a tarea: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.delete("/{task_id}/notes/{note_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Desvincular nota de tarea")
-async def unlink_note_from_task(task_id: str, note_id: str, user=Depends(get_current_user)):
-    """
-    Elimina la relación entre una tarea y una nota.
-    """
-    try:
-        user_id = user.id
-        
-        # Verificar propiedad de tarea (la política RLS lo haría, pero validamos para 404)
-        task_check = supabase.table("tasks").select("id").eq("id", task_id).eq("user_id", user_id).execute()
-        if not task_check.data:
-             raise HTTPException(status_code=404, detail="Tarea no encontrada")
-
-        response = supabase.table("task_notes").delete().eq("task_id", task_id).eq("note_id", note_id).execute()
-        
-        return None
-    except Exception as e:
-         logger.error(f"Error desvinculando nota: {e}")
-         raise HTTPException(status_code=400, detail=str(e))
 
 @router.delete("/{task_id}/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Desvincular etiqueta de tarea")
 async def remove_tag_from_task(task_id: str, tag_id: str, user=Depends(get_current_user)):
@@ -557,7 +565,7 @@ async def remove_tag_from_task(task_id: str, tag_id: str, user=Depends(get_curre
             raise HTTPException(status_code=404, detail="Tarea no encontrada o no te pertenece")
 
         # 2. Eliminar la relación en task_tags
-        response = supabase.table("task_tags").delete().eq("task_id", task_id).eq("tag_id", tag_id).execute()
+        supabase.table("task_tags").delete().eq("task_id", task_id).eq("tag_id", tag_id).execute()
 
         return None
 

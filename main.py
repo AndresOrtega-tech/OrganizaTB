@@ -18,6 +18,7 @@ try:
     from backend.notes.api import router as notes_router
     from backend.events.api import router as events_router
     from backend.reminders.api import router as reminders_router
+    from backend.relations.api import router as relations_router
 except ImportError:
     from database import supabase
     from auth.api import router as auth_router
@@ -26,6 +27,7 @@ except ImportError:
     from notes.api import router as notes_router
     from events.api import router as events_router
     from reminders.api import router as reminders_router
+    from relations.api import router as relations_router
 
 # Configuración de Rate Limiting
 limiter = Limiter(key_func=get_remote_address)
@@ -63,6 +65,7 @@ app.include_router(tasks_router, prefix="/api/tasks", tags=["Tasks"])
 app.include_router(notes_router, prefix="/api/notes", tags=["Notes"])
 app.include_router(events_router, prefix="/api/events", tags=["Events"])
 app.include_router(reminders_router, prefix="/api/reminders", tags=["Reminders"])
+app.include_router(relations_router, prefix="/api/relations", tags=["Relations"])
 
 @app.get("/", tags=["Health"])
 def read_root():
