@@ -1,0 +1,23 @@
+Sección,Métrica,Valor
+General,URL Base,https://api-organiza-tb.vercel.app/api
+General,Usuarios,3
+General,Total Requests,477
+General,Exitosos,477
+General,Fallidos,0
+General,Tiempo Total (s),16.92
+General,Requests/seg,28.19
+
+Fase,Tags,5.43s
+Fase,Entidades,4.60s
+Fase,Relaciones,4.85s
+Fase,Lecturas,1.49s
+Fase,Updates,0.54s
+
+Latencia,Fase,Promedio (ms),P95 (ms),Max (ms)
+,,1636,4584,5431
+
+Entidades,Usuario,Tags,Tasks,Notes,Events
+,user1,5,20,20,20
+,user2,5,20,20,20
+,user3,5,20,20,20
+
