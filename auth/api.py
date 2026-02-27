@@ -14,9 +14,10 @@ import httpx
 # Configurar logger
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter()        # Prefijo: /api/auth
+users_router = APIRouter()  # Prefijo: /api/users
 
-@router.post("/users", status_code=status.HTTP_201_CREATED, summary="Registrar nuevo usuario")
+@users_router.post("/", status_code=status.HTTP_201_CREATED, summary="Registrar nuevo usuario")
 async def register_user(user: UserCreate, request: Request):
     """
     Registra un nuevo usuario en Supabase Auth y crea su entrada en la tabla profiles.
@@ -112,7 +113,7 @@ async def register_user(user: UserCreate, request: Request):
         raise HTTPException(status_code=400, detail=f"Error en el registro: {str(e)}")
 
 
-@router.post("/auth/login", response_model=Token, summary="Iniciar sesión")
+@router.post("/login", response_model=Token, summary="Iniciar sesión")
 async def login(user: UserLogin, request: Request):
     """
     Autentica al usuario contra Supabase y devuelve tokens JWT.
@@ -161,7 +162,7 @@ async def login(user: UserLogin, request: Request):
         raise HTTPException(status_code=400, detail="Error en la autenticación. Verifique sus credenciales.")
 
 
-@router.get("/users/me", response_model=CurrentUser, summary="Obtener información del usuario autenticado")
+@users_router.get("/me", response_model=CurrentUser, summary="Obtener información del usuario autenticado")
 async def get_current_user_info(user=Depends(get_current_user)):
     try:
         full_name = None
@@ -190,7 +191,7 @@ async def get_current_user_info(user=Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="No se pudo obtener la información del usuario.")
 
 
-@router.patch("/users/avatar", summary="Actualizar avatar del usuario")
+@users_router.patch("/avatar", summary="Actualizar avatar del usuario")
 async def update_avatar(avatar_update: UserAvatarUpdate, user=Depends(get_current_user)):
     """
     Actualiza el avatar del usuario autenticado.
@@ -233,7 +234,7 @@ async def update_avatar(avatar_update: UserAvatarUpdate, user=Depends(get_curren
         raise HTTPException(status_code=400, detail=f"No se pudo actualizar el avatar: {str(e)}")
 
 
-@router.patch("/users/password", summary="Cambiar contraseña (Usuario autenticado)")
+@users_router.patch("/password", summary="Cambiar contraseña (Usuario autenticado)")
 async def update_password(
     password_update: UserPasswordUpdate, 
     user=Depends(get_current_user),
@@ -269,7 +270,7 @@ async def update_password(
         raise HTTPException(status_code=400, detail=f"No se pudo actualizar la contraseña: {str(e)}")
 
 
-@router.post("/users/password/reset", summary="Solicitar cambio de contraseña")
+@users_router.post("/password/reset", summary="Solicitar cambio de contraseña")
 async def request_password_reset(reset_request: UserPasswordResetRequest):
     """
     Envía un correo al usuario especificado para restablecer su contraseña.

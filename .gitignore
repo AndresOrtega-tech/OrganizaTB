@@ -41,3 +41,5 @@ htmlcov/
 .env
 
 .DS_Store
+
+*.csv
