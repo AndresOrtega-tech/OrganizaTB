@@ -9,25 +9,14 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Intentar importaciones relativas o absolutas según el contexto de ejecución
-try:
-    from backend.database import supabase
-    from backend.auth.api import router as auth_router
-    from backend.tags.api import router as tags_router
-    from backend.tasks.api import router as tasks_router
-    from backend.notes.api import router as notes_router
-    from backend.events.api import router as events_router
-    from backend.reminders.api import router as reminders_router
-    from backend.relations.api import router as relations_router
-except ImportError:
-    from database import supabase
-    from auth.api import router as auth_router
-    from tags.api import router as tags_router
-    from tasks.api import router as tasks_router
-    from notes.api import router as notes_router
-    from events.api import router as events_router
-    from reminders.api import router as reminders_router
-    from relations.api import router as relations_router
+from database import supabase
+from auth.api import router as auth_router, users_router
+from tags.api import router as tags_router
+from tasks.api import router as tasks_router
+from notes.api import router as notes_router
+from events.api import router as events_router
+from reminders.api import router as reminders_router
+from relations.api import router as relations_router
 
 # Configuración de Rate Limiting
 limiter = Limiter(key_func=get_remote_address)
@@ -59,7 +48,8 @@ app.add_middleware(
 )
 
 # Incluir routers
-app.include_router(auth_router, prefix="/api", tags=["Authentication"])
+app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
+app.include_router(users_router, prefix="/api/users", tags=["Users"])
 app.include_router(tags_router, prefix="/api/tags", tags=["Tags"])
 app.include_router(tasks_router, prefix="/api/tasks", tags=["Tasks"])
 app.include_router(notes_router, prefix="/api/notes", tags=["Notes"])
