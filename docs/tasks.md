@@ -115,15 +115,67 @@
 
 ---
 
+---
+
+## 🐳 Tasks Docker + Kubernetes (CR-001)
+> Nuevas tasks derivadas del CR-001 — contenerización y deploy en K8s con Helm + Minikube.
+> Ver detalle completo en `docs/changes/CR-001-docker-kubernetes.md`.
+
+- [x] **TASK-010** — Crear ramas `v_docker_dev` y `v_docker_prod` desde `production`
+  - **Estado:** ✅ completado
+  - **Archivos principales:** git (solo operación de ramas)
+  - **Notas:** Ambas ramas creadas y pusheadas a origin. `v_docker_dev` es la rama de trabajo; `v_docker_prod` recibirá el merge cuando esté validado.
+
+- [ ] **TASK-011** — Crear `Dockerfile` y `.dockerignore`
+  - **Descripción:** Contenerizar la app FastAPI usando `python:3.12-slim` como base. Entrypoint con uvicorn en `0.0.0.0:8000`. Variables de entorno inyectadas en runtime (no desde `.env`).
+  - **Archivos involucrados:** `Dockerfile`, `.dockerignore`
+  - **Depende de:** TASK-010
+  - **Criterio de done:** `docker build -t organizat-api .` termina sin errores; imagen levanta y `/health` responde OK.
+
+- [ ] **TASK-012** — Validar build y run local con Docker
+  - **Descripción:** Buildear imagen, correr contenedor inyectando `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` como env vars, validar que la API responde correctamente.
+  - **Archivos involucrados:** `Dockerfile`, `.dockerignore`
+  - **Depende de:** TASK-011
+  - **Criterio de done:** `docker run` levanta la API; `curl localhost:8000/health` devuelve `{"status": "ok"}`.
+
+- [ ] **TASK-013** — Crear Helm chart completo (`helm/organizat/`)
+  - **Descripción:** Chart con Deployment, Service, Secret y ConfigMap. Values separados para dev (Minikube) y prod (placeholder). Liveness/readiness probes apuntan a `/health`.
+  - **Archivos involucrados:** `helm/organizat/Chart.yaml`, `values.yaml`, `values-dev.yaml`, `values-prod.yaml`, `templates/deployment.yaml`, `templates/service.yaml`, `templates/secret.yaml`, `templates/configmap.yaml`, `templates/_helpers.tpl`, `templates/NOTES.txt`
+  - **Depende de:** TASK-010
+  - **Criterio de done:** `helm lint helm/organizat` pasa sin errores; `helm template` genera manifiestos K8s válidos.
+
+- [ ] **TASK-014** — Desplegar y validar en Minikube local
+  - **Descripción:** Levantar Minikube, buildear imagen en el contexto Docker de Minikube (`eval $(minikube docker-env)`), instalar Helm chart con values-dev y validar que el pod queda Running.
+  - **Archivos involucrados:** `scripts/minikube-setup.sh`, `helm/organizat/values-dev.yaml`
+  - **Depende de:** TASK-012, TASK-013
+  - **Criterio de done:** `kubectl get pods` muestra pod en estado `Running`; liveness y readiness probes pasan; endpoint accesible desde host via port-forward.
+
+- [ ] **TASK-015** — Actualizar docs del pipeline y mergear a `v_docker_prod`
+  - **Descripción:** Actualizar `project-brief.md`, `design.md` y `blueprint.md` con el nuevo stack de infra. Merge de `v_docker_dev` → `v_docker_prod` una vez validado.
+  - **Archivos involucrados:** `docs/project-brief.md`, `docs/design.md`, `docs/blueprint.md`, `docs/tasks.md`
+  - **Depende de:** TASK-014
+  - **Criterio de done:** Docs actualizados; PR aprobado; `v_docker_prod` en sync con estado validado.
+
+---
+
 ## Orden de ejecución sugerido
-1. `TASK-006` — Actualizar y consolidar docs en `development` (porque ya acordaste que los cambios actuales son de documentación).
-2. `TASK-009` — Ejecutar smoke tests y validaciones locales/CI para confirmar "docs-only".
-3. Si (2) es OK: push de `development` y crear PR → merge a `production`.
-4. `TASK-007` — Añadir CI guard (opcional) para futuros merges docs-only.
-5. `TASK-002` y `TASK-003` — Backlog técnico (BD: constraint; TagUpdate icon).
-6. `TASK-001` — Implementar worker de reminders (recomendado después de estabilizar RLS y migraciones).
-7. `TASK-004` — Activar y validar RLS en Supabase (hacerlo en staging primero).
-8. `TASK-005` y `TASK-008` — Tests e insights según prioridad del roadmap.
+
+### Track A — Backlog existente (development / production)
+1. `TASK-006` — Actualizar y consolidar docs en `development`.
+2. `TASK-009` — Smoke tests y validaciones antes de merge a `production`.
+3. `TASK-007` — Añadir CI guard para merges docs-only (opcional).
+4. `TASK-002` y `TASK-003` — Backlog técnico (BD: constraint XOR; TagUpdate icon).
+5. `TASK-001` — Implementar worker de reminders.
+6. `TASK-004` — Activar y validar RLS en Supabase (staging primero).
+7. `TASK-005` y `TASK-008` — Tests e insights según roadmap.
+
+### Track B — Docker + Kubernetes (v_docker_dev / v_docker_prod) — CR-001
+1. `TASK-010` ✅ — Ramas creadas.
+2. `TASK-011` — Dockerfile + .dockerignore.
+3. `TASK-012` — Validar Docker local.
+4. `TASK-013` — Helm chart completo.
+5. `TASK-014` — Deploy y validación en Minikube.
+6. `TASK-015` — Docs actualizados + merge a `v_docker_prod`.
 
 ---
 
