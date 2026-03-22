@@ -22,9 +22,8 @@ de infraestructura y deployment.
 - Script `scripts/minikube-setup.sh` para levantar el entorno local completo
 
 ### Qué se mantiene (solo en `production` y `development`)
-- `vercel.json` — vive únicamente en las ramas `production` y `development`; las ramas
-  `v_docker_dev` y `v_docker_prod` no lo incluyen, son exclusivas para la infra Docker/K8s
 - Toda la lógica del API (`*/api.py`, `*/schemas.py`, `main.py`, `database.py`) sin cambios
+
 
 ### Fuera del scope de esta entrega
 - `values-prod.yaml` — se agrega cuando se defina el proveedor cloud (GKE, EKS, etc.)
@@ -42,6 +41,7 @@ cluster compartido. El objetivo de esta entrega es:
 2. Contenerizar la aplicación con Docker (`Dockerfile` es suficiente)
 3. Desplegar en Kubernetes administrado con Helm
 4. Probar y validar todo localmente con Minikube — el ajuste al cloud viene después
+5. Limpiar el código/documentación de restos de Vercel que ya no sean necesarios
 
 ---
 
@@ -54,9 +54,9 @@ production (base)
 ```
 
 Notas:
-- `vercel.json` **no existe** en `v_docker_dev` ni `v_docker_prod`
 - Los merges de features del API siguen su propio track: `development` → `production`
 - Ambos tracks son completamente independientes
+- Antes de arrancar TASK-011, limpiar referencias a Vercel y decidir el destino de `api_test_log.json`
 
 ---
 
@@ -74,6 +74,7 @@ Notas:
 - [ ] **TASK-011** — Crear `Dockerfile` y `.dockerignore`
 - [ ] **TASK-012** — Validar build y run local con Docker
 - [ ] **TASK-013** — Crear Helm chart (`helm/organizat/`)
+  - **Notas:** Mantener el scope mínimo: backend, Minikube y Helm; no agregar extras de cloud todavía.
 - [ ] **TASK-014** — Desplegar y validar en Minikube local
 - [ ] **TASK-015** — Merge `v_docker_dev` → `v_docker_prod`
 

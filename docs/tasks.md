@@ -1,7 +1,7 @@
 # Task Board: OrganizaT
 
 > **Basado en:** init-pipeline (proyecto existente)  
-> **Total de tasks:** 8 completadas + 9 pendientes
+> **Total de tasks:** 10 completadas + 7 pendientes
 
 ---
 
@@ -126,23 +126,28 @@
   - **Archivos principales:** git (solo operación de ramas)
   - **Notas:** Ambas ramas creadas y pusheadas a origin. `v_docker_dev` es la rama de trabajo; `v_docker_prod` recibirá el merge cuando esté validado.
 
-- [ ] **TASK-011** — Crear `Dockerfile` y `.dockerignore`
+- [x] **TASK-011** — Crear `Dockerfile` y `.dockerignore`
+  - **Estado:** ✅ completado
   - **Descripción:** Contenerizar la app FastAPI usando `python:3.12-slim` como base. Entrypoint con uvicorn en `0.0.0.0:8000`. Variables de entorno inyectadas en runtime (no desde `.env`).
   - **Archivos involucrados:** `Dockerfile`, `.dockerignore`
   - **Depende de:** TASK-010
   - **Criterio de done:** `docker build -t organizat-api .` termina sin errores; imagen levanta y `/health` responde OK.
+  - **Notas:** Validado con `docker build` y `docker run` usando `--env-file`; `/health` responde `{"status":"ok","supabase_connected":true}`.
 
-- [ ] **TASK-012** — Validar build y run local con Docker
+- [x] **TASK-012** — Validar build y run local con Docker
+  - **Estado:** ✅ completado
   - **Descripción:** Buildear imagen, correr contenedor inyectando `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` como env vars, validar que la API responde correctamente.
   - **Archivos involucrados:** `Dockerfile`, `.dockerignore`
   - **Depende de:** TASK-011
   - **Criterio de done:** `docker run` levanta la API; `curl localhost:8000/health` devuelve `{"status": "ok"}`.
+  - **Notas:** La inyección de variables funcionó con `--env-file` y la conexión a Supabase quedó activa.
 
 - [ ] **TASK-013** — Crear Helm chart (`helm/organizat/`)
   - **Descripción:** Chart con Deployment, Service, Secret y ConfigMap. Solo `values-dev.yaml` para Minikube — `values-prod.yaml` fuera del scope de esta entrega. Liveness/readiness probes apuntan a `/health`.
   - **Archivos involucrados:** `helm/organizat/Chart.yaml`, `values.yaml`, `values-dev.yaml`, `templates/deployment.yaml`, `templates/service.yaml`, `templates/secret.yaml`, `templates/configmap.yaml`, `templates/_helpers.tpl`, `templates/NOTES.txt`
   - **Depende de:** TASK-010
   - **Criterio de done:** `helm lint helm/organizat` pasa sin errores; `helm template` genera manifiestos K8s válidos.
+  - **Notas:** Mantener el scope mínimo: backend, Minikube y Helm; no agregar extras de cloud todavía.
 
 - [ ] **TASK-014** — Desplegar y validar en Minikube local
   - **Descripción:** Levantar Minikube, buildear imagen en el contexto Docker de Minikube (`eval $(minikube docker-env)`), instalar Helm chart con values-dev y validar que el pod queda Running.
@@ -171,8 +176,8 @@
 
 ### Track B — Docker + Kubernetes (v_docker_dev / v_docker_prod) — CR-001
 1. `TASK-010` ✅ — Ramas creadas.
-2. `TASK-011` — Dockerfile + .dockerignore.
-3. `TASK-012` — Validar Docker local.
+2. `TASK-011` ✅ — Dockerfile + .dockerignore.
+3. `TASK-012` ✅ — Validar Docker local.
 4. `TASK-013` — Helm chart completo.
 5. `TASK-014` — Deploy y validación en Minikube.
 6. `TASK-015` — Docs actualizados + merge a `v_docker_prod`.

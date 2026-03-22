@@ -1,0 +1,42 @@
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+.venv/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Tests and artifacts
+tests/
+api_test_log.json
+*.csv
+
+# Git and editor files
+.git/
+.gitignore
+.vscode/
+.idea/
+.DS_Store
+
+# Docs and planning
+docs/
+.windsurf/
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+
+# Local databases / temporary files
+*.sqlite
+*.db
+
+# Logs
+*.log
