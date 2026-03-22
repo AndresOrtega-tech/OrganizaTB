@@ -39,6 +39,7 @@ htmlcov/
 
 # Environment variables
 .env
+.env.docker
 
 .DS_Store
 
