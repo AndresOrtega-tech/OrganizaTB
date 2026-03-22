@@ -177,11 +177,11 @@ helm/
     ├── Chart.yaml              ← metadata del chart
     ├── values.yaml             ← valores default
     ├── values-dev.yaml         ← override Minikube (imagePullPolicy: Never, replicas: 1)
-    ├── values-prod.yaml        ← override producción (placeholder hasta definir cloud)
+
     └── templates/
         ├── _helpers.tpl        ← helpers estándar (fullname, labels)
         ├── deployment.yaml     ← K8s Deployment con liveness/readiness probes
-        ├── service.yaml        ← K8s Service (NodePort en dev, ClusterIP en prod)
+        ├── service.yaml        ← K8s Service (NodePort en dev)
         ├── secret.yaml         ← K8s Secret (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
         ├── configmap.yaml      ← K8s ConfigMap (config no sensible)
         └── NOTES.txt           ← instrucciones post-install
@@ -205,7 +205,7 @@ Minikube / Cluster K8s
     │           ├── readiness: GET /health
     │           └── envFrom:   Secret + ConfigMap
     └── Service: organizat-svc
-        └── NodePort (dev) / ClusterIP (prod)
+    └── NodePort (dev)
 ```
 
 ### Flujo local con Minikube
@@ -236,12 +236,12 @@ El script `scripts/minikube-setup.sh` automatiza estos pasos.
 - **Nunca** en `values.yaml` ni commiteados en el repo.
 - Se pasan al instalar el chart via `--set secrets.*` o mediante un archivo local `secrets.local.yaml`
   que está en `.gitignore`.
-- En producción cloud: usar el secret manager del proveedor (GCP Secret Manager, AWS Secrets Manager,
-  etc.) integrado con K8s via External Secrets Operator o similar.
+- En producción cloud: la estrategia de secrets se define cuando se elija el proveedor (GKE, EKS, etc.).
 
-### Coexistencia Vercel + Docker/K8s
-- `vercel.json` se mantiene sin cambios — Vercel sigue siendo opción válida.
-- Los dos tracks de deploy son independientes:
+### Separación de tracks de deploy
+- `vercel.json` **solo existe** en las ramas `production` y `development`.
+- Las ramas `v_docker_dev` y `v_docker_prod` son exclusivas de la infra Docker/K8s — no incluyen `vercel.json`.
+- Los dos tracks son independientes:
   - Features/lógica: `development` → `production`
   - Infra Docker/K8s: `v_docker_dev` → `v_docker_prod`
 
@@ -264,30 +264,10 @@ Riesgos adicionales — Docker + Kubernetes (CR-001): <!-- CR-001 -->
 - Imagen Docker pesada si no se usa `.dockerignore` correctamente → build lento y pull lento en K8s.
 - Diferencia de comportamiento Vercel (serverless, stateless por request) vs Docker (proceso continuo)
   → validar con health check y smoke tests antes de mergear a `v_docker_prod`.
-- Minikube ≠ cloud real (networking, ingress, storage) → `values-prod.yaml` separado para ajustar sin
-  cambiar templates al momento de definir el proveedor cloud.
+- Minikube ≠ cloud real (networking, ingress, storage) → Helm chart diseñado portable; `values-prod.yaml`
+  se agrega en CR posterior cuando se defina el proveedor cloud.
 
-Design tokens (placeholders)
----------------------------
-Aunque este repositorio es backend-only, incluyo un bloque de design tokens para cuando el frontend sea actualizado/consistente con el backend (usados para coloreado de tags y estilos del UI). Ponerlos en `docs/design-tokens.json` o similar cuando se necesite:
 
-```json
-{
-  "colors": {
-    "tag_default": "#808080" /* inferido */,
-    "brand_primary": "#0d6efd" /* TODO: verificar */
-  },
-  "spacing": {
-    "small": "4px",
-    "base": "8px",
-    "large": "16px"
-  },
-  "fonts": {
-    "base": "Inter, system-ui, sans-serif" /* TODO: verificar */
-  }
-}
-```
-<!-- inferido del código -->
 
 Endpoints y contratos (resumen)
 ------------------------------

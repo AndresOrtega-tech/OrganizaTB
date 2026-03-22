@@ -74,7 +74,7 @@ Este documento combina lo encontrado en el código (spec + diseño actual) y las
 
 12. Minikube ≠ cloud real (networking, storage, ingress diferentes) (Medio — CR-001)
     - Impacto: lo que funciona en Minikube puede necesitar ajustes al cambiar a GKE/EKS/AKS.
-    - Mitigación: Helm chart portable con `values-prod.yaml` separado (placeholder hasta definir proveedor).
+    - Mitigación: Helm chart diseñado portable; `values-prod.yaml` se agrega en CR posterior cuando se defina el proveedor cloud.
 
 13. `python-dotenv` en container sin `.env` (Bajo — CR-001)
     - Impacto: en el contenedor Docker no existirá `.env`; `python-dotenv` intenta cargarlo pero no es bloqueante.
@@ -99,8 +99,7 @@ Este documento combina lo encontrado en el código (spec + diseño actual) y las
 - Responsable de QA para la activación de RLS y validación de políticas: ¿quién hará la verificación final? <!-- TODO: verificar -->
 - Proceso de rollback para creación de usuarios cuando la creación del profile falla: ¿prefieren compensating action (borrar auth user) o aceptar usuarios huérfanos y arreglar con job? <!-- TODO: verificar -->
 - Cobertura de tests: falta un resumen de qué pruebas end-to-end se ejecutarán antes del merge a production. <!-- TODO: verificar -->
-- **CR-001** — Proveedor cloud final para K8s (GKE, EKS, AKS, DigitalOcean, etc.) aún por definir. `values-prod.yaml` es placeholder. <!-- TODO: verificar -->
-- **CR-001** — Definir estrategia de registry de imágenes Docker (Docker Hub, GCR, ECR) para cuando se pase a cloud real. <!-- TODO: verificar -->
+- **CR-001** — Proveedor cloud final para K8s (GKE, EKS, AKS, DigitalOcean, etc.) aún por definir — se documenta en CR posterior. <!-- TODO: verificar -->
 - **CR-001** — Confirmar si se necesita Ingress controller en Minikube local (nginx-ingress addon) o basta con port-forward para pruebas. <!-- TODO: verificar -->
 
 ---

@@ -138,9 +138,9 @@
   - **Depende de:** TASK-011
   - **Criterio de done:** `docker run` levanta la API; `curl localhost:8000/health` devuelve `{"status": "ok"}`.
 
-- [ ] **TASK-013** — Crear Helm chart completo (`helm/organizat/`)
-  - **Descripción:** Chart con Deployment, Service, Secret y ConfigMap. Values separados para dev (Minikube) y prod (placeholder). Liveness/readiness probes apuntan a `/health`.
-  - **Archivos involucrados:** `helm/organizat/Chart.yaml`, `values.yaml`, `values-dev.yaml`, `values-prod.yaml`, `templates/deployment.yaml`, `templates/service.yaml`, `templates/secret.yaml`, `templates/configmap.yaml`, `templates/_helpers.tpl`, `templates/NOTES.txt`
+- [ ] **TASK-013** — Crear Helm chart (`helm/organizat/`)
+  - **Descripción:** Chart con Deployment, Service, Secret y ConfigMap. Solo `values-dev.yaml` para Minikube — `values-prod.yaml` fuera del scope de esta entrega. Liveness/readiness probes apuntan a `/health`.
+  - **Archivos involucrados:** `helm/organizat/Chart.yaml`, `values.yaml`, `values-dev.yaml`, `templates/deployment.yaml`, `templates/service.yaml`, `templates/secret.yaml`, `templates/configmap.yaml`, `templates/_helpers.tpl`, `templates/NOTES.txt`
   - **Depende de:** TASK-010
   - **Criterio de done:** `helm lint helm/organizat` pasa sin errores; `helm template` genera manifiestos K8s válidos.
 
