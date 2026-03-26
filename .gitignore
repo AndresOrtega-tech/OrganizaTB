@@ -44,3 +44,7 @@ htmlcov/
 
 *.csv
 .env.docker
+
+# Sensitive files (schema/test logs)
+api_test_log.json
+database.txt
