@@ -1,7 +1,7 @@
 # Task Board: OrganizaT
 
 > **Basado en:** init-pipeline (proyecto existente)  
-> **Total de tasks:** 8 completadas + 9 pendientes
+> **Total de tasks:** 9 completadas + 9 pendientes
 
 ---
 
@@ -47,6 +47,11 @@
   - **Estado:** implementado
   - **Archivos principales:** `main.py`, `database.py`, `vercel.json`
   - **Notas:** Endpoints `/`, `/health`, `/tables` disponibles; Vercel configurado para desplegar `main.py`. <!-- inferido del código -->
+
+- [x] **IMPL-009** — Tests de integración completos (Tasks, Tags, Notes, Events, Relations, Reminders)
+  - **Estado:** implementado
+  - **Archivos principales:** `tests/test_integracion.py`, `tests/plan_pruebas_integracion.md`
+  - **Notas:** Suite de ~52 requests que prueba CRUD completo + relaciones + tags + reminders. Login automático vía `TEST_EMAIL`/`TEST_PASSWORD` en `.env`. Cleanup automático al final y en caso de error. Incluye verificación de related entities post-vinculación.
 
 ---
 
