@@ -18,7 +18,7 @@ de infraestructura y deployment.
 ### Qué se agrega
 - `Dockerfile` para contenerizar la app FastAPI con uvicorn
 - `.dockerignore` para excluir archivos innecesarios del build
-- Helm chart en `helm/organizat/` para administrar el despliegue en Kubernetes
+- Helm chart en `helm/` para administrar el despliegue en Kubernetes
 - Script `scripts/minikube-setup.sh` para levantar el entorno local completo
 
 ### Qué se mantiene (solo en `production` y `development`)
@@ -73,7 +73,7 @@ Notas:
 - [x] **TASK-010** — Crear ramas `v_docker_dev` y `v_docker_prod` desde `production` ✅
 - [ ] **TASK-011** — Crear `Dockerfile` y `.dockerignore`
 - [ ] **TASK-012** — Validar build y run local con Docker
-- [ ] **TASK-013** — Crear Helm chart (`helm/organizat/`)
+- [ ] **TASK-013** — Crear Helm chart (`helm/`)
   - **Notas:** Mantener el scope mínimo: backend, Minikube y Helm; no agregar extras de cloud todavía.
 - [ ] **TASK-014** — Desplegar y validar en Minikube local
 - [ ] **TASK-015** — Merge `v_docker_dev` → `v_docker_prod`
@@ -84,15 +84,15 @@ Notas:
 |---------|-----------|
 | `Dockerfile` | Build de la imagen de la app FastAPI |
 | `.dockerignore` | Excluir `venv/`, `.env*`, `__pycache__/`, `*.pyc`, `tests/`, `docs/`, `.git/` |
-| `helm/organizat/Chart.yaml` | Metadata del chart (nombre, versión, descripción) |
-| `helm/organizat/values.yaml` | Valores default (imagen, puerto 8000, replicas, recursos) |
-| `helm/organizat/values-dev.yaml` | Override Minikube: `imagePullPolicy: Never`, replicas 1 |
-| `helm/organizat/templates/_helpers.tpl` | Helpers estándar de Helm (fullname, labels) |
-| `helm/organizat/templates/deployment.yaml` | K8s Deployment con liveness/readiness en `/health` |
-| `helm/organizat/templates/service.yaml` | K8s Service — NodePort en dev |
-| `helm/organizat/templates/secret.yaml` | K8s Secret para SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY |
-| `helm/organizat/templates/configmap.yaml` | K8s ConfigMap para config no sensible |
-| `helm/organizat/templates/NOTES.txt` | Instrucciones post-install del chart |
+| `helm/Chart.yaml` | Metadata del chart (nombre, versión, descripción) |
+| `helm/values.yaml` | Valores default (imagen, puerto 8000, replicas, recursos) |
+| `helm/values-dev.yaml` | Override Minikube: `imagePullPolicy: Never`, replicas 1 |
+| `helm/templates/_helpers.tpl` | Helpers estándar de Helm (fullname, labels) |
+| `helm/templates/deployment.yaml` | K8s Deployment con liveness/readiness en `/health` |
+| `helm/templates/service.yaml` | K8s Service — NodePort en dev |
+| `helm/templates/secret.yaml` | K8s Secret para SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY |
+| `helm/templates/configmap.yaml` | K8s ConfigMap para config no sensible |
+| `helm/templates/NOTES.txt` | Instrucciones post-install del chart |
 | `scripts/minikube-setup.sh` | Script que levanta Minikube, buildea imagen e instala el chart |
 
 ### Archivos de código modificados

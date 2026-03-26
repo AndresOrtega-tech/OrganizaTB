@@ -142,18 +142,22 @@
   - **Criterio de done:** `docker run` levanta la API; `curl localhost:8000/health` devuelve `{"status": "ok"}`.
   - **Notas:** La inyección de variables funcionó con `--env-file` y la conexión a Supabase quedó activa.
 
-- [ ] **TASK-013** — Crear Helm chart (`helm/organizat/`)
+- [x] **TASK-013** — Crear Helm chart (`helm/`)
+  - **Estado:** ✅ completado
   - **Descripción:** Chart con Deployment, Service, Secret y ConfigMap. Solo `values-dev.yaml` para Minikube — `values-prod.yaml` fuera del scope de esta entrega. Liveness/readiness probes apuntan a `/health`.
-  - **Archivos involucrados:** `helm/organizat/Chart.yaml`, `values.yaml`, `values-dev.yaml`, `templates/deployment.yaml`, `templates/service.yaml`, `templates/secret.yaml`, `templates/configmap.yaml`, `templates/_helpers.tpl`, `templates/NOTES.txt`
+  - **Archivos involucrados:** `helm/Chart.yaml`, `helm/values.yaml`, `helm/values-dev.yaml`, `helm/templates/deployment.yaml`, `helm/templates/service.yaml`, `helm/templates/secret.yaml`, `helm/templates/configmap.yaml`, `helm/templates/_helpers.tpl`, `helm/templates/NOTES.txt`
   - **Depende de:** TASK-010
-  - **Criterio de done:** `helm lint helm/organizat` pasa sin errores; `helm template` genera manifiestos K8s válidos.
+  - **Criterio de done:** `helm lint helm/` pasa sin errores; `helm template` genera manifiestos K8s válidos.
   - **Notas:** Mantener el scope mínimo: backend, Minikube y Helm; no agregar extras de cloud todavía.
+  - **Notas:** Las variables Supabase para Helm se inyectan desde `values-dev.yaml` y se traducen a un `Secret` con `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, `ANON_KEY` y `SERVICE_ROLE` para validar el despliegue en Minikube.
 
-- [ ] **TASK-014** — Desplegar y validar en Minikube local
+- [x] **TASK-014** — Desplegar y validar en Minikube local
+  - **Estado:** ✅ completado
   - **Descripción:** Levantar Minikube, buildear imagen en el contexto Docker de Minikube (`eval $(minikube docker-env)`), instalar Helm chart con values-dev y validar que el pod queda Running.
   - **Archivos involucrados:** `scripts/minikube-setup.sh`, `helm/organizat/values-dev.yaml`
   - **Depende de:** TASK-012, TASK-013
   - **Criterio de done:** `kubectl get pods` muestra pod en estado `Running`; liveness y readiness probes pasan; endpoint accesible desde host via port-forward.
+  - **Notas:** Validado en Minikube con `helm upgrade --install`, `kubectl rollout status`, `kubectl exec` para verificar env vars y `curl /health` con `supabase_connected:true`.
 
 - [ ] **TASK-015** — Actualizar docs del pipeline y mergear a `v_docker_prod`
   - **Descripción:** Actualizar `project-brief.md`, `design.md` y `blueprint.md` con el nuevo stack de infra. Merge de `v_docker_dev` → `v_docker_prod` una vez validado.
@@ -178,8 +182,8 @@
 1. `TASK-010` ✅ — Ramas creadas.
 2. `TASK-011` ✅ — Dockerfile + .dockerignore.
 3. `TASK-012` ✅ — Validar Docker local.
-4. `TASK-013` — Helm chart completo.
-5. `TASK-014` — Deploy y validación en Minikube.
+4. `TASK-013` ✅ — Helm chart completo.
+5. `TASK-014` ✅ — Deploy y validación en Minikube.
 6. `TASK-015` — Docs actualizados + merge a `v_docker_prod`.
 
 ---
