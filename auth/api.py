@@ -171,7 +171,7 @@ async def login(user: UserLogin, request: Request):
 
 @router.post("/auth/refresh", response_model=Token, summary="Renovar Access Token")
 @auth_limiter.limit("20/minute")
-async def refresh_token(request_data: RefreshTokenRequest):
+async def refresh_token(request_data: RefreshTokenRequest, request: Request):
     """
     Renueva el token de acceso usando un refresh token válido.
     Permite mantener la sesión activa sin pedir credenciales nuevamente.
