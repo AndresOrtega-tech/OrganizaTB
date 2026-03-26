@@ -105,7 +105,7 @@ async def create_task(task: TaskCreate, user=Depends(get_current_user)):
 
     except Exception as e:
         logger.error(f"Error creando tarea: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 @router.get("/", response_model=PaginatedTaskResponse, summary="Listar todas las tareas del usuario")
 async def list_tasks(
@@ -337,7 +337,7 @@ async def list_tasks(
         }
     except Exception as e:
         logger.error(f"Error listando tareas: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 @router.get("/{task_id}", response_model=TaskResponse, summary="Obtener una tarea específica")
 async def get_task(task_id: str, user=Depends(get_current_user)):
@@ -363,7 +363,7 @@ async def get_task(task_id: str, user=Depends(get_current_user)):
         return task
     except Exception as e:
         logger.error(f"Error obteniendo tarea: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 @router.get("/{task_id}/related", response_model=TaskRelatedResponse, summary="Obtener relaciones de una tarea")
 async def get_task_related(task_id: str, user=Depends(get_current_user)):
@@ -405,7 +405,7 @@ async def get_task_related(task_id: str, user=Depends(get_current_user)):
         }
     except Exception as e:
         logger.error(f"Error obteniendo relaciones de tarea: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 @router.patch("/{task_id}", response_model=TaskResponse, summary="Actualizar una tarea")
 async def update_task(task_id: str, task_update: TaskUpdate, user=Depends(get_current_user)):
@@ -443,8 +443,8 @@ async def update_task(task_id: str, task_update: TaskUpdate, user=Depends(get_cu
         # Lógica de recordatorios:
         # Si se envían recordatorios explícitamente (lista vacía o con elementos)
         if task_update.reminders is not None:
-            # 1. Borrar recordatorios existentes
-            supabase.table("reminders").delete().eq("task_id", task_id).execute()
+            # 1. Borrar recordatorios existentes (con user_id para seguridad)
+            supabase.table("reminders").delete().eq("task_id", task_id).eq("user_id", user_id).execute()
             
             # 2. Si hay nuevos recordatorios y tenemos fecha límite, insertarlos
             if task_update.reminders and new_due_date_str:
@@ -479,22 +479,22 @@ async def update_task(task_id: str, task_update: TaskUpdate, user=Depends(get_cu
             response = supabase.table("tasks").update(update_data).eq("id", task_id).eq("user_id", user_id).execute()
         else:
             # Si solo se actualizaron recordatorios, recuperamos la tarea actualizada
-            response = supabase.table("tasks").select("*").eq("id", task_id).execute()
+            response = supabase.table("tasks").select("*").eq("id", task_id).eq("user_id", user_id).execute()
 
         if not response.data:
              raise HTTPException(status_code=404, detail="Tarea no encontrada o no tienes permiso para editarla")
              
         updated_task = response.data[0]
         
-        # Recuperar recordatorios actuales para devolver
-        reminders_res = supabase.table("reminders").select("*").eq("task_id", task_id).execute()
+        # Recuperar recordatorios actuales para devolver (con user_id)
+        reminders_res = supabase.table("reminders").select("*").eq("task_id", task_id).eq("user_id", user_id).execute()
         updated_task["reminders_data"] = reminders_res.data if reminders_res.data else []
         
         return updated_task
         
     except Exception as e:
         logger.error(f"Error actualizando tarea: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Eliminar una tarea")
 async def delete_task(task_id: str, user=Depends(get_current_user)):
@@ -513,7 +513,7 @@ async def delete_task(task_id: str, user=Depends(get_current_user)):
         
     except Exception as e:
         logger.error(f"Error eliminando tarea: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 @router.post("/{task_id}/tags", status_code=status.HTTP_200_OK, summary="Asignar etiqueta a una tarea")
 async def assign_tag_to_task(task_id: str, assignment: TaskAssignTags, user=Depends(get_current_user)):
@@ -530,10 +530,10 @@ async def assign_tag_to_task(task_id: str, assignment: TaskAssignTags, user=Depe
         if not task_check.data:
             raise HTTPException(status_code=404, detail="Tarea no encontrada o no te pertenece")
 
-        # 2. Verificar que las etiquetas pertenecen al usuario (opcional pero recomendado)
-        # Podríamos hacer un count, pero por simplicidad asumimos que si el cliente manda IDs, son válidos.
-        # Si una etiqueta no existe, la inserción fallará por FK si la BD está bien configurada.
-        # Pero para mejor UX, intentamos insertar y capturamos error.
+        # 2. Verificar que la etiqueta pertenece al usuario
+        tag_check = supabase.table("tags").select("id").eq("id", tag_id).eq("user_id", user_id).execute()
+        if not tag_check.data:
+            raise HTTPException(status_code=404, detail="Etiqueta no encontrada o no te pertenece")
 
         # 2b. Verificar si la relación ya existe (idempotencia)
         exists = supabase.table("task_tags").select("task_id").eq("task_id", task_id).eq("tag_id", tag_id).execute()
@@ -549,7 +549,7 @@ async def assign_tag_to_task(task_id: str, assignment: TaskAssignTags, user=Depe
 
     except Exception as e:
         logger.error(f"Error asignando etiquetas: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 @router.delete("/{task_id}/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Desvincular etiqueta de tarea")
 async def remove_tag_from_task(task_id: str, tag_id: str, user=Depends(get_current_user)):
@@ -571,4 +571,4 @@ async def remove_tag_from_task(task_id: str, tag_id: str, user=Depends(get_curre
 
     except Exception as e:
         logger.error(f"Error desvinculando etiqueta: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")

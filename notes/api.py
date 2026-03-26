@@ -50,7 +50,7 @@ async def create_note(note: NoteCreate, user=Depends(get_current_user)):
 
     except Exception as e:
         logger.error(f"Error creando nota: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 @router.get("/", response_model=List[NoteResponse], summary="Listar todas las notas del usuario")
 async def list_notes(
@@ -59,7 +59,7 @@ async def list_notes(
     tag_ids: Optional[List[str]] = Query(None, description="Filtrar por etiquetas (AND: la nota debe tener TODAS las etiquetas seleccionadas)"),
     sort_by: str = Query("updated_at", pattern="^(updated_at)$", description="Ordenar por fecha de actualización"),
     order: str = Query("desc", pattern="^(asc|desc)$", description="Dirección del ordenamiento"),
-    limit: Optional[int] = Query(None, ge=1, description="Límite de notas a retornar"),
+    limit: Optional[int] = Query(None, ge=1, le=100, description="Límite de notas a retornar"),
 ):
     try:
         user_id = user.id
@@ -113,7 +113,7 @@ async def list_notes(
         return final_notes
     except Exception as e:
         logger.error(f"Error listando notas: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 @router.get("/{note_id}", response_model=NoteResponse, summary="Obtener una nota específica")
 async def get_note(note_id: str, user=Depends(get_current_user)):
@@ -133,7 +133,7 @@ async def get_note(note_id: str, user=Depends(get_current_user)):
         return response.data[0]
     except Exception as e:
         logger.error(f"Error obteniendo nota: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 @router.patch("/{note_id}", response_model=NoteResponse, summary="Actualizar una nota")
 async def update_note(note_id: str, note_update: NoteUpdate, user=Depends(get_current_user)):
@@ -156,7 +156,7 @@ async def update_note(note_id: str, note_update: NoteUpdate, user=Depends(get_cu
         
     except Exception as e:
         logger.error(f"Error actualizando nota: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 
 @router.patch(
@@ -190,7 +190,7 @@ async def update_note_summary(
         return response.data[0]
     except Exception as e:
         logger.error(f"Error actualizando resumen de nota: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 @router.delete("/{note_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Eliminar una nota")
 async def delete_note(note_id: str, user=Depends(get_current_user)):
@@ -202,7 +202,7 @@ async def delete_note(note_id: str, user=Depends(get_current_user)):
              raise HTTPException(status_code=404, detail="Nota no encontrada o no tienes permiso para eliminarla")
     except Exception as e:
         logger.error(f"Error eliminando nota: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 @router.post(
     "/{note_id}/tags",
@@ -225,6 +225,11 @@ async def assign_tag_to_note(
         )
         if not note_check.data:
             raise HTTPException(status_code=404, detail="Nota no encontrada")
+
+        # Verificar que la etiqueta pertenece al usuario
+        tag_check = supabase.table("tags").select("id").eq("id", tag_id).eq("user_id", user_id).execute()
+        if not tag_check.data:
+            raise HTTPException(status_code=404, detail="Etiqueta no encontrada")
 
         existing = (
             supabase.table("note_tags")
@@ -252,7 +257,7 @@ async def assign_tag_to_note(
 
     except Exception as e:
         logger.error(f"Error asignando etiquetas a nota: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 @router.delete("/{note_id}/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Desvincular etiqueta de nota")
 async def remove_tag_from_note(note_id: str, tag_id: str, user=Depends(get_current_user)):
@@ -273,7 +278,7 @@ async def remove_tag_from_note(note_id: str, tag_id: str, user=Depends(get_curre
 
     except Exception as e:
         logger.error(f"Error desvinculando etiqueta de nota: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 
 @router.get(
@@ -327,4 +332,4 @@ async def get_note_related(note_id: str, user=Depends(get_current_user)):
         }
     except Exception as e:
         logger.error(f"Error obteniendo relaciones de nota: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")

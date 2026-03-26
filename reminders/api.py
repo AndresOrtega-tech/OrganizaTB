@@ -67,7 +67,7 @@ async def list_reminders(
         
     except Exception as e:
         logger.error(f"Error listando recordatorios: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 @router.patch("/{reminder_id}", response_model=ReminderResponse, summary="Actualizar recordatorio")
 async def update_reminder(reminder_id: str, update: ReminderUpdate, user=Depends(get_current_user)):
@@ -93,7 +93,7 @@ async def update_reminder(reminder_id: str, update: ReminderUpdate, user=Depends
         
     except Exception as e:
         logger.error(f"Error actualizando recordatorio: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 @router.delete("/{reminder_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Eliminar recordatorio")
 async def delete_reminder(reminder_id: str, user=Depends(get_current_user)):
@@ -106,4 +106,4 @@ async def delete_reminder(reminder_id: str, user=Depends(get_current_user)):
              
     except Exception as e:
         logger.error(f"Error eliminando recordatorio: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")

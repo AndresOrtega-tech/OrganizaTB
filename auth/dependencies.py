@@ -29,6 +29,6 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Error de autenticación: {str(e)}",
+            detail="Token inválido o expirado",
             headers={"WWW-Authenticate": "Bearer"},
         )

@@ -10,6 +10,8 @@ except ImportError:
     from auth.dependencies import get_current_user, security
 import logging
 import httpx
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 # Configurar logger
 logger = logging.getLogger(__name__)
@@ -17,7 +19,11 @@ logger = logging.getLogger(__name__)
 router = APIRouter()        # Prefijo: /api/auth
 users_router = APIRouter()  # Prefijo: /api/users
 
+# Rate limiter para auth
+auth_limiter = Limiter(key_func=get_remote_address)
+
 @users_router.post("/", status_code=status.HTTP_201_CREATED, summary="Registrar nuevo usuario")
+@auth_limiter.limit("5/minute")
 async def register_user(user: UserCreate, request: Request):
     """
     Registra un nuevo usuario en Supabase Auth y crea su entrada en la tabla profiles.
@@ -110,10 +116,11 @@ async def register_user(user: UserCreate, request: Request):
         raise # Re-raise HTTPException to be handled by FastAPI
     except Exception as e:
         logger.error(f"Error en registro: {str(e)}")
-        raise HTTPException(status_code=400, detail=f"Error en el registro: {str(e)}")
+        raise HTTPException(status_code=400, detail="Error en el registro. Intente nuevamente.")
 
 
 @router.post("/login", response_model=Token, summary="Iniciar sesión")
+@auth_limiter.limit("10/minute")
 async def login(user: UserLogin, request: Request):
     """
     Autentica al usuario contra Supabase y devuelve tokens JWT.
@@ -163,6 +170,7 @@ async def login(user: UserLogin, request: Request):
 
 
 @router.post("/auth/refresh", response_model=Token, summary="Renovar Access Token")
+@auth_limiter.limit("20/minute")
 async def refresh_token(request_data: RefreshTokenRequest):
     """
     Renueva el token de acceso usando un refresh token válido.
@@ -275,7 +283,7 @@ async def update_avatar(avatar_update: UserAvatarUpdate, user=Depends(get_curren
         raise he
     except Exception as e:
         logger.error(f"Error actualizando avatar: {e}")
-        raise HTTPException(status_code=400, detail=f"No se pudo actualizar el avatar: {str(e)}")
+        raise HTTPException(status_code=400, detail="No se pudo actualizar el avatar.")
 
 
 @users_router.patch("/password", summary="Cambiar contraseña (Usuario autenticado)")
@@ -311,11 +319,12 @@ async def update_password(
 
     except Exception as e:
         logger.error(f"Error actualizando contraseña: {e}")
-        raise HTTPException(status_code=400, detail=f"No se pudo actualizar la contraseña: {str(e)}")
+        raise HTTPException(status_code=400, detail="No se pudo actualizar la contraseña.")
 
 
 @users_router.post("/password/reset", summary="Solicitar cambio de contraseña")
-async def request_password_reset(reset_request: UserPasswordResetRequest):
+@auth_limiter.limit("3/minute")
+async def request_password_reset(reset_request: UserPasswordResetRequest, request: Request):
     """
     Envía un correo al usuario especificado para restablecer su contraseña.
     No requiere autenticación previa.
@@ -331,5 +340,5 @@ async def request_password_reset(reset_request: UserPasswordResetRequest):
 
     except Exception as e:
         logger.error(f"Error solicitando cambio de contraseña: {e}")
-        raise HTTPException(status_code=400, detail=f"Error solicitando cambio de contraseña: {str(e)}")
+        raise HTTPException(status_code=400, detail="Error solicitando cambio de contraseña.")
 

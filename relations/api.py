@@ -47,7 +47,7 @@ async def link_task_note(payload: TaskNoteLink, user=Depends(get_current_user)):
         raise
     except Exception as e:
         logger.error(f"Error vinculando tarea y nota: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 
 @router.delete(
@@ -84,7 +84,7 @@ async def unlink_task_note(payload: TaskNoteLink, user=Depends(get_current_user)
         raise
     except Exception as e:
         logger.error(f"Error desvinculando tarea y nota: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 
 @router.post("/task-event", status_code=status.HTTP_201_CREATED, summary="Vincular tarea y evento")
@@ -119,7 +119,7 @@ async def link_task_event(payload: TaskEventLink, user=Depends(get_current_user)
         raise
     except Exception as e:
         logger.error(f"Error vinculando tarea y evento: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 
 @router.delete(
@@ -158,7 +158,7 @@ async def unlink_task_event(payload: TaskEventLink, user=Depends(get_current_use
         raise
     except Exception as e:
         logger.error(f"Error desvinculando tarea y evento: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 
 @router.post("/note-event", status_code=status.HTTP_201_CREATED, summary="Vincular nota y evento")
@@ -193,7 +193,7 @@ async def link_note_event(payload: NoteEventLink, user=Depends(get_current_user)
         raise
     except Exception as e:
         logger.error(f"Error vinculando nota y evento: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 
 @router.delete(
@@ -232,5 +232,5 @@ async def unlink_note_event(payload: NoteEventLink, user=Depends(get_current_use
         raise
     except Exception as e:
         logger.error(f"Error desvinculando nota y evento: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 

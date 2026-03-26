@@ -16,7 +16,7 @@ class ReminderResponse(BaseModel):
     status: str
 
 class TaskBase(BaseModel):
-    title: str = Field(..., min_length=1, description="Título de la tarea")
+    title: str = Field(..., min_length=1, max_length=200, description="Título de la tarea")
     description: Optional[str] = Field(None, description="Descripción detallada de la tarea", max_length=500)
     due_date: Optional[datetime] = Field(None, description="Fecha límite de la tarea")
     is_completed: bool = Field(False, description="Estado de completado de la tarea")
@@ -26,7 +26,7 @@ class TaskCreate(TaskBase):
     reminders: Optional[List[ReminderConfig]] = Field(None, description="Configuración de recordatorios (tiempo antes del vencimiento)")
 
 class TaskUpdate(BaseModel):
-    title: Optional[str] = Field(None, min_length=1)
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
     description: Optional[str] = Field(None, max_length=500)
     due_date: Optional[datetime] = None
     is_completed: Optional[bool] = None

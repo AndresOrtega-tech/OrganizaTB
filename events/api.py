@@ -86,7 +86,7 @@ async def create_event(event: EventCreate, user=Depends(get_current_user)):
         
     except Exception as e:
         logger.error(f"Error creando evento: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 @router.get("/", response_model=List[EventResponse], summary="Listar eventos")
 async def list_events(
@@ -150,7 +150,7 @@ async def list_events(
         return final_events
     except Exception as e:
         logger.error(f"Error listando eventos: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 @router.get("/{event_id}", response_model=EventResponse)
 async def get_event(event_id: str, user=Depends(get_current_user)):
@@ -179,7 +179,7 @@ async def get_event(event_id: str, user=Depends(get_current_user)):
         return event
     except Exception as e:
         logger.error(f"Error obteniendo evento: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 @router.patch("/{event_id}", response_model=EventResponse)
 async def update_event(event_id: str, update: EventUpdate, user=Depends(get_current_user)):
@@ -202,8 +202,8 @@ async def update_event(event_id: str, update: EventUpdate, user=Depends(get_curr
 
         # Manejo de recordatorios
         if update.reminders is not None:
-            # Borrar anteriores
-            supabase.table("reminders").delete().eq("event_id", event_id).execute()
+            # Borrar anteriores (con user_id para seguridad)
+            supabase.table("reminders").delete().eq("event_id", event_id).eq("user_id", user.id).execute()
             
             if update.reminders:
                 start_obj = datetime.fromisoformat(str(new_start_str).replace("Z", "+00:00"))
@@ -223,13 +223,13 @@ async def update_event(event_id: str, update: EventUpdate, user=Depends(get_curr
                 
         if update_data:
             update_data["updated_at"] = datetime.now().isoformat()
-            res = supabase.table("events").update(update_data).eq("id", event_id).execute()
+            res = supabase.table("events").update(update_data).eq("id", event_id).eq("user_id", user.id).execute()
             updated_event = res.data[0]
         else:
-            res = supabase.table("events").select("*").eq("id", event_id).execute()
+            res = supabase.table("events").select("*").eq("id", event_id).eq("user_id", user.id).execute()
             updated_event = res.data[0]
             
-        rem_res = supabase.table("reminders").select("*").eq("event_id", event_id).execute()
+        rem_res = supabase.table("reminders").select("*").eq("event_id", event_id).eq("user_id", user.id).execute()
         updated_event["reminders_data"] = rem_res.data or []
         
         # Procesar etiquetas vinculadas para que el PATCH retorne la entidad igual al GET
@@ -245,7 +245,7 @@ async def update_event(event_id: str, update: EventUpdate, user=Depends(get_curr
         
     except Exception as e:
         logger.error(f"Error actualizando evento: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 @router.delete("/{event_id}", status_code=204)
 async def delete_event(event_id: str, user=Depends(get_current_user)):
@@ -255,7 +255,7 @@ async def delete_event(event_id: str, user=Depends(get_current_user)):
             raise HTTPException(status_code=404, detail="Evento no encontrado")
     except Exception as e:
         logger.error(f"Error eliminando evento: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 @router.get("/{event_id}/related", response_model=EventRelatedResponse, summary="Obtener relaciones de un evento")
 async def get_event_related(event_id: str, user=Depends(get_current_user)):
@@ -281,7 +281,7 @@ async def get_event_related(event_id: str, user=Depends(get_current_user)):
 
     except Exception as e:
         logger.error(f"Error obteniendo relaciones del evento: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 @router.post("/{event_id}/tags", status_code=status.HTTP_200_OK, summary="Asignar etiqueta a un evento")
 async def assign_tag_to_event(event_id: str, body: EventAssignTag, user=Depends(get_current_user)):
@@ -306,7 +306,7 @@ async def assign_tag_to_event(event_id: str, body: EventAssignTag, user=Depends(
 
     except Exception as e:
         logger.error(f"Error asignando etiqueta a evento: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 @router.delete("/{event_id}/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Desvincular etiqueta de evento")
 async def remove_tag_from_event(event_id: str, tag_id: str, user=Depends(get_current_user)):
@@ -321,4 +321,4 @@ async def remove_tag_from_event(event_id: str, tag_id: str, user=Depends(get_cur
 
     except Exception as e:
         logger.error(f"Error desvinculando etiqueta de evento: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
