@@ -12,18 +12,22 @@ Uso: python tests/test_integracion.py
 """
 
 import asyncio
-import aiohttp
 import os
 import sys
 import time
 from datetime import datetime, timedelta, timezone
+
+import aiohttp
 from dotenv import load_dotenv
 
 # Cargar .env desde la raíz del proyecto
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 # ─── Configuración ────────────────────────────────────────────────────────────
-BASE_URL = os.environ.get("BASE_URL", "https://api-organiza-tb.vercel.app").rstrip("/")
+BASE_URL = os.environ.get(
+    "BASE_URL",
+    "https://api-organiza-tb-git-development-andresortegatechs-projects.vercel.app/",
+).rstrip("/")
 # Asegurar que /api esté al final
 if not BASE_URL.endswith("/api"):
     BASE_URL = BASE_URL.rstrip("/") + "/api"
@@ -65,6 +69,7 @@ TS = int(time.time())
 # HELPERS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def h() -> dict:
     """Headers con token de autenticación."""
     return {
@@ -94,9 +99,9 @@ def log_info(msg: str):
 
 
 def log_phase(name: str):
-    print(f"\n{BOLD}{'─'*60}{RESET}")
+    print(f"\n{BOLD}{'─' * 60}{RESET}")
     print(f"  {BOLD}{CYAN}{name}{RESET}")
-    print(f"{BOLD}{'─'*60}{RESET}")
+    print(f"{BOLD}{'─' * 60}{RESET}")
 
 
 def assert_status(step: str, resp: aiohttp.ClientResponse, expected: int) -> bool:
@@ -125,6 +130,7 @@ def now_iso(hours_offset: int = 0) -> str:
 # ═══════════════════════════════════════════════════════════════════════════════
 # FASES
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def fase_0_login(session: aiohttp.ClientSession) -> bool:
     """Login para obtener access_token."""
@@ -210,7 +216,10 @@ async def fase_2_create_tasks(session: aiohttp.ClientSession):
                 if rem_data:
                     created["reminder1_id"] = rem_data[0].get("id", "")
                 has_rem = data.get("has_reminder", False)
-                log_pass(step, f"id={data['id'][:8]}… has_reminder={has_rem} reminders={len(rem_data)}")
+                log_pass(
+                    step,
+                    f"id={data['id'][:8]}… has_reminder={has_rem} reminders={len(rem_data)}",
+                )
             else:
                 log_fail(step, "sin id en respuesta")
         else:
@@ -364,7 +373,9 @@ async def fase_5_get_lists(session: aiohttp.ClientSession):
         if assert_status(step, resp, 200):
             data = await resp_json_safe(resp)
             items = data.get("data", []) if isinstance(data, dict) else []
-            all_alta = all(t.get("priority") == "alta" for t in items) if items else True
+            all_alta = (
+                all(t.get("priority") == "alta" for t in items) if items else True
+            )
             if items and all_alta:
                 log_pass(step, f"{len(items)} tasks con priority=alta")
             elif not items:
@@ -482,7 +493,10 @@ async def fase_7_patch_updates(session: aiohttp.ClientSession):
                 if data and data.get("name") == payload["name"]:
                     log_pass(step, f"name={data.get('name')}")
                 else:
-                    log_fail(step, f"name esperado '{payload['name']}', obtuvo '{data.get('name')}'")
+                    log_fail(
+                        step,
+                        f"name esperado '{payload['name']}', obtuvo '{data.get('name')}'",
+                    )
             else:
                 await resp_json_safe(resp)
 
@@ -497,14 +511,20 @@ async def fase_7_patch_updates(session: aiohttp.ClientSession):
                 if data and data.get("is_completed") is True:
                     log_pass(step, f"is_completed={data.get('is_completed')}")
                 else:
-                    log_fail(step, f"is_completed esperado True, obtuvo {data.get('is_completed')}")
+                    log_fail(
+                        step,
+                        f"is_completed esperado True, obtuvo {data.get('is_completed')}",
+                    )
             else:
                 await resp_json_safe(resp)
 
     # 7.3 PATCH note
     if created["note1_id"]:
         url = f"{BASE_URL}/notes/{created['note1_id']}"
-        payload = {"title": f"Nota actualizada {TS}", "content": "Contenido nuevo de prueba"}
+        payload = {
+            "title": f"Nota actualizada {TS}",
+            "content": "Contenido nuevo de prueba",
+        }
         async with session.patch(url, json=payload, headers=h()) as resp:
             step = "7.3 PATCH /notes/{id}"
             if assert_status(step, resp, 200):
@@ -540,7 +560,10 @@ async def fase_7_patch_updates(session: aiohttp.ClientSession):
             if assert_status(step, resp, 200):
                 data = await resp_json_safe(resp)
                 if data and data.get("title") == payload["title"]:
-                    log_pass(step, f"title={data.get('title')}, location={data.get('location')}")
+                    log_pass(
+                        step,
+                        f"title={data.get('title')}, location={data.get('location')}",
+                    )
                 else:
                     log_fail(step, "title no coincide")
             else:
@@ -557,7 +580,9 @@ async def fase_7_patch_updates(session: aiohttp.ClientSession):
                 if data and data.get("status") == "sent":
                     log_pass(step, f"status={data.get('status')}")
                 else:
-                    log_fail(step, f"status esperado 'sent', obtuvo '{data.get('status')}'")
+                    log_fail(
+                        step, f"status esperado 'sent', obtuvo '{data.get('status')}'"
+                    )
             else:
                 await resp_json_safe(resp)
 
@@ -634,7 +659,10 @@ async def fase_9_get_related_pre(session: aiohttp.ClientSession):
                 notes_count = len(data.get("notes", [])) if data else 0
                 events_count = len(data.get("events", [])) if data else 0
                 if tags_count >= 2:
-                    log_pass(step, f"tags={tags_count}, notes={notes_count}, events={events_count}")
+                    log_pass(
+                        step,
+                        f"tags={tags_count}, notes={notes_count}, events={events_count}",
+                    )
                 else:
                     log_fail(step, f"esperados >=2 tags, obtuvo {tags_count}")
             else:
@@ -908,6 +936,7 @@ async def fase_18_delete_tags(session: aiohttp.ClientSession):
 # CLEANUP DE EMERGENCIA
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def cleanup(session: aiohttp.ClientSession):
     """Intenta eliminar todo lo creado en caso de error a mitad del test."""
     log_phase("CLEANUP — Eliminación de emergencia")
@@ -941,15 +970,16 @@ async def cleanup(session: aiohttp.ClientSession):
 # MAIN
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def main():
     global passed, failed
 
-    print(f"\n{BOLD}{'═'*60}{RESET}")
+    print(f"\n{BOLD}{'═' * 60}{RESET}")
     print(f"  {BOLD}TESTS DE INTEGRACIÓN — OrganizaT API{RESET}")
-    print(f"  {BOLD}{'═'*60}{RESET}")
+    print(f"  {BOLD}{'═' * 60}{RESET}")
     print(f"  Base URL: {BASE_URL}")
     print(f"  Timestamp: {TS}")
-    print(f"{'═'*60}{RESET}")
+    print(f"{'═' * 60}{RESET}")
 
     t0 = time.time()
 
@@ -1002,9 +1032,9 @@ async def main():
     elapsed = time.time() - t0
 
     # ─── Resumen ──────────────────────────────────────────────────────────
-    print(f"\n{BOLD}{'═'*60}{RESET}")
+    print(f"\n{BOLD}{'═' * 60}{RESET}")
     print(f"  {BOLD}RESUMEN{RESET}")
-    print(f"{'═'*60}{RESET}")
+    print(f"{'═' * 60}{RESET}")
     print(f"  {GREEN}✔ Pasados:  {passed}{RESET}")
     print(f"  {RED}✘ Fallados: {failed}{RESET}")
     print(f"  ⏱ Tiempo:   {elapsed:.1f}s")
@@ -1014,7 +1044,7 @@ async def main():
         for err in errors:
             print(f"    - {err}")
 
-    print(f"{'═'*60}{RESET}\n")
+    print(f"{'═' * 60}{RESET}\n")
 
     # Exit code
     sys.exit(0 if failed == 0 else 1)
