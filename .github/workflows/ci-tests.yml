@@ -1,4 +1,4 @@
-name: CI — Tests de integración
+name: CI - Tests de integracion
 
 on:
   push:

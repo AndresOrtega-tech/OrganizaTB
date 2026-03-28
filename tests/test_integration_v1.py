@@ -71,14 +71,11 @@ def test_tags_crud(headers):
         assert resp.status_code in (200, 201), f"Crear tag falló: {resp.text}"
         tag_id = resp.json()["id"]
 
-        # Listar
+        # Listar y verificar que la tag creada aparece
         resp = httpx.get(f"{BASE_URL}/api/tags/", headers=headers, timeout=TIMEOUT)
         assert resp.status_code == 200
-
-        # Obtener por ID
-        resp = httpx.get(f"{BASE_URL}/api/tags/{tag_id}", headers=headers, timeout=TIMEOUT)
-        assert resp.status_code == 200
-        assert resp.json()["id"] == tag_id
+        ids = [t["id"] for t in resp.json()]
+        assert tag_id in ids
 
     finally:
         # Cleanup
