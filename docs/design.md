@@ -1,7 +1,7 @@
 # Design — OrganizaT API
 <!-- inferido del código -->
 
-Última actualización: 2026-03-21
+Última actualización: 2026-03-27 (CR-001: Docker + Kubernetes — completado)
 
 Resumen
 -------
@@ -14,7 +14,11 @@ Elementos marcados:
 
 Arquitectura general
 --------------------
-Arquitectura: Monolito backend en Python ejecutándose como una aplicación FastAPI, con Supabase (Postgres + Auth) como backend de persistencia y auth. Deploy objetivo: Vercel usando `@vercel/python` y `main.py` como entrypoint.
+Arquitectura: Monolito backend en Python ejecutándose como una aplicación FastAPI, con Supabase (Postgres + Auth) como backend de persistencia y auth.
+
+Deploy targets:
+- **Vercel** (actual): `@vercel/python` con `main.py` como entrypoint — serverless.
+- **Docker + Kubernetes** (CR-001 ✅ completado): imagen Docker corriendo uvicorn, orquestada con Helm en Kubernetes, validada localmente con Minikube. <!-- CR-001 -->
 <!-- inferido del código -->
 
 Arquitectura (vista simplificada)
@@ -132,14 +136,114 @@ Seguridad y secretos
 
 Escalado y despliegue
 ---------------------
+**Opción A — Vercel (actual)**
 - Despliegue actual: Vercel con `main.py` (ver `vercel.json`).
   - Build: `@vercel/python` apunta a `main.py`.
   - Considerar: Vercel limita el modelo de ejecución (funciones serverless). Asegurarse que latencia y timeouts no limiten operaciones largas.
   <!-- inferido del código -->
 
+**Opción B — Docker + Kubernetes (CR-001)** <!-- CR-001 -->
+- La app corre como proceso continuo dentro de un contenedor Docker (no serverless).
+- Orquestada con Helm; validada localmente con Minikube.
+- El proveedor cloud de K8s está por definirse (GKE, EKS, AKS, DigitalOcean, etc.).
+- Ramas dedicadas: `v_docker_dev` (trabajo) → `v_docker_prod` (estable).
+
 - Recomendaciones:
   - Para alta carga y workers de recordatorios, desplegar un worker separado (ej. small VM, serverless function con scheduler, o Background job runner) que consulte `reminders` y envíe notificaciones.
   - Externalizar tasks de largo procesamiento (si aparece IA para summary) a colas (Redis/RQ, Celery) o jobs serverless.
+
+---
+
+Deploy alternativo: Docker + Kubernetes — Detalle (CR-001)
+----------------------------------------------------------
+<!-- CR-001 -->
+
+### Dockerfile
+```
+Base image:  python:3.12-slim
+WORKDIR:     /app
+COPY:        requirements.txt → pip install → copiar código fuente
+EXPOSE:      8000
+CMD:         uvicorn main:app --host 0.0.0.0 --port 8000 --workers 1
+```
+- Variables de entorno inyectadas en runtime desde K8s Secrets (no desde `.env`).
+- `python-dotenv` / `database.py` ya manejan el fallback a env vars del sistema → compatible.
+- `.dockerignore` excluye: `venv/`, `.env*`, `__pycache__/`, `*.pyc`, `tests/`, `docs/`, `.git/`.
+
+### Estructura del Helm chart
+```
+helm/
+└── organizat/
+    ├── Chart.yaml              ← metadata del chart
+    ├── values.yaml             ← valores default
+    ├── values-dev.yaml         ← override Minikube (imagePullPolicy: Never, replicas: 1)
+
+    └── templates/
+        ├── _helpers.tpl        ← helpers estándar (fullname, labels)
+        ├── deployment.yaml     ← K8s Deployment con liveness/readiness probes
+        ├── service.yaml        ← K8s Service (NodePort en dev)
+        ├── secret.yaml         ← K8s Secret (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+        ├── configmap.yaml      ← K8s ConfigMap (config no sensible)
+        └── NOTES.txt           ← instrucciones post-install
+```
+
+### Health / Readiness probes
+- El endpoint `GET /health` ya existe en la API y devuelve `{"status": "ok", "supabase_connected": bool}`.
+- Se usa como `livenessProbe` y `readinessProbe` en el Deployment de Kubernetes.
+- Esto garantiza que K8s reinicia pods en mal estado y no enruta tráfico a pods no listos.
+
+### Arquitectura K8s (vista simplificada)
+```
+Minikube / Cluster K8s
+└── Namespace: organizat
+    ├── Secret: organizat-secrets          ← SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+    ├── ConfigMap: organizat-config        ← config no sensible
+    ├── Deployment: organizat-api
+    │   └── Pod(s): organizat-api-xxxxx
+    │       └── Container: organizat-api  ← imagen Docker
+    │           ├── liveness:  GET /health
+    │           ├── readiness: GET /health
+    │           └── envFrom:   Secret + ConfigMap
+    └── Service: organizat-svc
+    └── NodePort (dev)
+```
+
+### Flujo local con Minikube
+```bash
+# 1. Iniciar Minikube
+minikube start
+
+# 2. Apuntar Docker al daemon de Minikube (imagen local sin registry externo)
+eval $(minikube docker-env)
+
+# 3. Build de la imagen
+docker build -t organizat-api:local .
+
+# 4. Instalar Helm chart con valores de dev
+helm install organizat ./helm/organizat \
+  -f helm/organizat/values-dev.yaml \
+  --set secrets.supabaseUrl="$SUPABASE_URL" \
+  --set secrets.supabaseKey="$SUPABASE_SERVICE_ROLE_KEY"
+
+# 5. Verificar
+kubectl get pods
+kubectl port-forward svc/organizat-svc 8000:8000
+curl localhost:8000/health
+```
+El script `scripts/minikube-setup.sh` automatiza estos pasos.
+
+### Gestión de secretos en K8s
+- **Nunca** en `values.yaml` ni commiteados en el repo.
+- Se pasan al instalar el chart via `--set secrets.*` o mediante un archivo local `secrets.local.yaml`
+  que está en `.gitignore`.
+- En producción cloud: la estrategia de secrets se define cuando se elija el proveedor (GKE, EKS, etc.).
+
+### Separación de tracks de deploy
+- `vercel.json` **solo existe** en las ramas `production` y `development`.
+- Las ramas `v_docker_dev` y `v_docker_prod` son exclusivas de la infra Docker/K8s — no incluyen `vercel.json`.
+- Los dos tracks son independientes:
+  - Features/lógica: `development` → `production`
+  - Infra Docker/K8s: `v_docker_dev` → `v_docker_prod`
 
 Observabilidad y pruebas
 ------------------------
@@ -155,27 +259,15 @@ Limitaciones y riesgos identificados
 - Dependencia fuerte en `supabase-py` API: cambios en client o en Supabase API pueden romper flujos (e.g. métodos de refresh_session/ sign_up que cambian). <!-- inferido del código -->
 - Campo `icon` en `TagUpdate` está pendiente de exponer para edición según rules. <!-- inferido del código -->
 
-Design tokens (placeholders)
----------------------------
-Aunque este repositorio es backend-only, incluyo un bloque de design tokens para cuando el frontend sea actualizado/consistente con el backend (usados para coloreado de tags y estilos del UI). Ponerlos en `docs/design-tokens.json` o similar cuando se necesite:
+Riesgos adicionales — Docker + Kubernetes (CR-001): <!-- CR-001 -->
+- Secrets expuestos en `values.yaml` si no se tiene disciplina → nunca poner valores sensibles en values files.
+- Imagen Docker pesada si no se usa `.dockerignore` correctamente → build lento y pull lento en K8s.
+- Diferencia de comportamiento Vercel (serverless, stateless por request) vs Docker (proceso continuo)
+  → validar con health check y smoke tests antes de mergear a `v_docker_prod`.
+- Minikube ≠ cloud real (networking, ingress, storage) → Helm chart diseñado portable; `values-prod.yaml`
+  se agrega en CR posterior cuando se defina el proveedor cloud.
 
-```json
-{
-  "colors": {
-    "tag_default": "#808080" /* inferido */,
-    "brand_primary": "#0d6efd" /* TODO: verificar */
-  },
-  "spacing": {
-    "small": "4px",
-    "base": "8px",
-    "large": "16px"
-  },
-  "fonts": {
-    "base": "Inter, system-ui, sans-serif" /* TODO: verificar */
-  }
-}
-```
-<!-- inferido del código -->
+
 
 Endpoints y contratos (resumen)
 ------------------------------
@@ -223,6 +315,7 @@ Notas finales
 - Events está terminado y el `rules.md` anterior está desactualizado. <!-- confirmado por Andres -->
 - `improvement_insights` se deja fuera por ahora según indicación. <!-- confirmado por Andres -->
 - Worker de notificaciones está planeado pero no implementado. <!-- confirmado por Andres -->
+- Deploy Docker + Kubernetes completado (CR-001) ✅: Dockerfile, Helm chart, validado en Minikube. <!-- CR-001 -->
 
 Documentos relacionados
 ----------------------

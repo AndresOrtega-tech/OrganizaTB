@@ -1,22 +1,24 @@
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-import logging
+from slowapi.util import get_remote_address
+
+from auth.api import router as auth_router
+from auth.api import users_router
+from database import supabase
+from events.api import router as events_router
+from notes.api import router as notes_router
+from relations.api import router as relations_router
+from reminders.api import router as reminders_router
+from tags.api import router as tags_router
+from tasks.api import router as tasks_router
 
 # Configuración de logs
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-from database import supabase
-from auth.api import router as auth_router, users_router
-from tags.api import router as tags_router
-from tasks.api import router as tasks_router
-from notes.api import router as notes_router
-from events.api import router as events_router
-from reminders.api import router as reminders_router
-from relations.api import router as relations_router
 
 # Configuración de Rate Limiting
 limiter = Limiter(key_func=get_remote_address)
@@ -57,9 +59,11 @@ app.include_router(events_router, prefix="/api/events", tags=["Events"])
 app.include_router(reminders_router, prefix="/api/reminders", tags=["Reminders"])
 app.include_router(relations_router, prefix="/api/relations", tags=["Relations"])
 
+
 @app.get("/", tags=["Health"])
 def read_root():
-    return {"message": "Hola Mundo desde FastAPI en Vercel"}
+    return {"message": "Hola Mundo desde FastAPI"}
+
 
 @app.get("/health", tags=["Health"])
 def health_check():
@@ -67,18 +71,18 @@ def health_check():
         return {
             "status": "ok",
             "supabase_connected": True if supabase else False,
-            "supabase_url": str(supabase.supabase_url) if supabase else None
         }
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         return {"status": "error", "detail": str(e)}
+
 
 @app.get("/tables", tags=["Health"])
 def list_tables():
     if supabase is None:
         return {
             "status": "error",
-            "message": "Supabase no está configurado. Revisa las variables SUPABASE_URL y SUPABASE_ANON_KEY."
+            "message": "Supabase no está configurado. Revisa las variables SUPABASE_URL y SUPABASE_ANON_KEY.",
         }
 
     try:
@@ -89,5 +93,5 @@ def list_tables():
             "status": "error",
             "message": "No se pudieron listar las tablas. Asegúrate de haber creado la función RPC en Supabase.",
             "details": str(e),
-            "solution": "Ejecuta el SQL para crear get_tables()"
+            "solution": "Ejecuta el SQL para crear get_tables()",
         }

@@ -345,12 +345,19 @@ Referencias en el código
 - DB client: `database.py` crea `supabase` client usando variables de entorno. <!-- inferido del código -->
 - Reglas y especificaciones por módulo en `*/rules.md` (ya existentes). <!-- inferido del repo -->
 
+- US-008 — CI/CD con GitHub Actions <!-- CR-002 -->
+  - Como equipo, queremos que cada push/PR a `v_docker_prod` ejecute automáticamente los tests de integración contra la API viva en Vercel.
+  - Como equipo, queremos que cada push/PR a `v_docker_prod` verifique que la imagen Docker compila correctamente.
+  - Workflows: `ci-tests.yml` (pytest) y `ci-docker.yml` (docker build).
+  - Credenciales inyectadas vía GitHub Secrets (`TEST_PASSWORD`) y Variables (`TEST_EMAIL`, `BASE_URL`).
+
 Cambios confirmados desde el equipo
 -----------------------------------
 - `events` está finalizado y refactorizado; los `rules.md` anteriores pueden estar desactualizados. <!-- confirmado por Andres -->
 - RLS está desactivado durante el desarrollo. <!-- confirmado por Andres -->
 - Worker de reminders está en plan, no implementado. <!-- confirmado por Andres -->
 - `improvement_insights` no será foco inmediato. <!-- confirmado por Andres -->
+- CR-002 aprobado 2026-03-27: CI con GitHub Actions (tests pytest + docker build) en `v_docker_prod`. <!-- CR-002 -->
 
 Fin del documento
 -----------------

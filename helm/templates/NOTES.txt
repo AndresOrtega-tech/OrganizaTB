@@ -1,0 +1,20 @@
+1. The OrganizaT backend Helm release has been installed successfully.
+
+2. To check the deployed resources, run:
+   kubectl get pods
+   kubectl get svc
+
+3. To access the API locally, use port-forward:
+   kubectl port-forward svc/{{ include "organizat-backend.fullname" . }} 8000:8000
+
+4. Then open:
+   http://127.0.0.1:8000/docs
+
+5. Health check:
+   curl http://127.0.0.1:8000/health
+
+6. If the pod is not ready, inspect logs:
+   kubectl logs deploy/{{ include "organizat-backend.fullname" . }}
+
+7. If you need to upgrade the release after changing values:
+   helm upgrade --install {{ .Release.Name }} . -f values-dev.yaml

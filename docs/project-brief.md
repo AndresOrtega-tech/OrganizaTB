@@ -33,7 +33,8 @@ Proveer una API centralizada y segura que soporte:
 - DB / Auth: Supabase (Postgres + Auth) — supabase-py client
 - Env: python-dotenv
 - Dependencias principales listadas en `requirements.txt` (fastapi, uvicorn, supabase, slowapi, psycopg2-binary, email-validator) <!-- inferido del código -->
-- Deploy target: Vercel (`vercel.json` muestra build rule usando `main.py` y `@vercel/python`) <!-- inferido del código -->
+- Deploy target principal: Vercel (`vercel.json` muestra build rule usando `main.py` y `@vercel/python`) <!-- inferido del código -->
+- Deploy target alternativo: Docker + Kubernetes (Helm + Minikube) — ver CR-001 <!-- CR-001 -->
 
 ## Features implementadas (MVP actual)
 <!-- inferido del código -->
@@ -67,31 +68,39 @@ Proveer una API centralizada y segura que soporte:
 
 ## Repositorio / Branching
 - Ramas principales:
-  - `development` — rama activa de trabajo (últimos docs y cambios del README están en `development`).
-  - `production` — rama estable.
-- Diferencias observadas:
-  - `development` tiene commits/documentación añadida (README actualizado, `docs/ARCHITECTURE.md`, `docs/SPECS.md`, `docs/CHANGELOG.md`) y la eliminación de ciertos workflows locales. <!-- inferido del código -->
-  - Confirmado: no hay cambios funcionales en `development` respecto a `production` — los cambios pendientes son documentación. <!-- confirmado por Andres -->
+  - `development` — rama activa de trabajo para features y lógica del API.
+  - `production` — rama estable del API.
+  - `v_docker_dev` — rama de trabajo para la contenerización Docker + Kubernetes (sale de `production`). <!-- CR-001 -->
+  - `v_docker_prod` — rama estable de la versión Docker/K8s (merge desde `v_docker_dev` cuando esté validado). <!-- CR-001 -->
+- Notas:
+  - Los cambios de features del API van por `development` → `production`.
+  - Los cambios de infra Docker/K8s van por `v_docker_dev` → `v_docker_prod`.
+  - Ambos tracks son independientes y coexisten. <!-- CR-001 -->
 
 ## Variables de entorno requeridas
-(Indicar en `.env` local/entorno de despliegue)
+(Indicar en `.env` local o inyectar vía K8s Secrets / Vercel env vars según el entorno)
 <!-- inferido del código -->
-- SUPABASE_URL — URL del proyecto Supabase. <!-- inferido del código -->
-- SUPABASE_SERVICE_ROLE_KEY (o SERVICE_ROLE / SUPABASE_ANON_KEY / ANON_KEY) — clave para supabase client en backend. <!-- inferido del código -->
+- `SUPABASE_URL` — URL del proyecto Supabase. <!-- inferido del código -->
+- `SUPABASE_SERVICE_ROLE_KEY` (o `SERVICE_ROLE` / `SUPABASE_ANON_KEY` / `ANON_KEY`) — clave para supabase client en backend. <!-- inferido del código -->
+- En deploy Docker/K8s: las variables se inyectan como K8s Secrets — no se usa `.env` dentro del contenedor. <!-- CR-001 -->
 - Otras variables de entorno pueden añadirse según el entorno de despliegue (p. ej. SENTRY_DSN, MAIL settings si se añaden).
 
 ## Restricciones y supuestos
 - Autenticación y autorización delegadas a Supabase Auth. El backend valida tokens con `supabase.auth.get_user(token)`. <!-- inferido del código -->
 - Row Level Security (RLS) está habilitado a nivel de BD en algunos scripts, pero actualmente las políticas están desactivadas en el entorno de desarrollo. Esto implica que las pruebas locales y despliegues deben garantizar que las credenciales (Service Role Key) se usen con cuidado. <!-- confirmado por Andres -->
 - No hay worker de notificaciones implementado; el estado de recordatorios (`pending`, `sent`, `failed`) no será actualizado automáticamente hasta que se implemente el worker. <!-- confirmado por Andres -->
+- El deploy en Docker/K8s corre uvicorn como proceso continuo (no serverless como Vercel). Las env vars vienen del sistema operativo, no de `.env`. `database.py` ya maneja este caso. <!-- CR-001 -->
+- El proveedor cloud para K8s está por definirse. Minikube se usa para validación local. <!-- CR-001 -->
 
 ## Deuda técnica y riesgos (resumido)
 <!-- inferido del código -->
 - Secrets en entorno: revisar que las keys nunca se expongan a clientes (usar Service Role solo en backend).
+- En K8s: secrets nunca en `values.yaml` — usar K8s Secrets; nunca commitear valores sensibles. <!-- CR-001 -->
 - Falta de worker para recordatorios (riesgo: reminders no transicionan a `sent` ni `failed` automáticamente).
 - Políticas RLS desactivadas: en staging/production deben validarse y activarse cuidadosamente con tests de integración.
 - Tests: existen scripts de stress/limit en `tests/` pero cobertura unit/integration incompleta — priorizar pruebas críticas (auth, tasks CRUD, reminders).
 - Esquema DB vs código: validar que todos los migrations/constraints estén aplicados (check constraint `task_id XOR event_id` pendiente en DB). <!-- inferido del código -->
+- CORS con `"*"` en `main.py`: restringir a dominios explícitos antes de deploy en cualquier entorno productivo. <!-- inferido del código -->
 
 ## Archivo(s) de documentación y ubicación
 - Este brief: `docs/project-brief.md` (actual).
@@ -113,6 +122,14 @@ Proveer una API centralizada y segura que soporte:
 - Implementar worker de notificaciones en roadmap (pendiente). <!-- confirmado por Andres -->
 - Aplicar check constraint `(task_id IS NOT NULL) XOR (event_id IS NOT NULL)` en `reminders` cuando se prepare migración a producción. <!-- inferido del código -->
 - Revisar `rules.md` y eliminar/actualizar entradas desactualizadas (por ejemplo Events ya está terminado). <!-- confirmado por Andres -->
+
+## Change Requests activos
+
+| CR | Tipo | Descripción | Estado |
+|----|------|-------------|--------|
+| [CR-001](changes/CR-001-docker-kubernetes.md) | 🔴 LARGE | Contenerización Docker + Deploy Kubernetes (Helm + Minikube) | ✅ Completado |
+
+---
 
 Siguiente paso:
 *"Pipeline inicializado retroactivamente — continuar con `change-request-workflow.md` para nuevas features o con `verifier-archiver-workflow.md` para validar el estado actual."*

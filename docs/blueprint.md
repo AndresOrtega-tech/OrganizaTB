@@ -1,5 +1,7 @@
 # Blueprint: OrganizaT — estado, riesgos y ambigüedades
 
+> **Última actualización:** 2026-03-27 — CR-002 aprobado (GitHub Actions CI: tests de integración + Docker build)
+
 <!-- inferido del código -->
 Este documento combina lo encontrado en el código (spec + diseño actual) y las decisiones/confirmaciones entregadas por el equipo. Su objetivo es servir como guía rápida de riesgos técnicos, mitigaciones y ambigüedades que requieren decisiones antes de promover cambios a producción.
 
@@ -9,8 +11,9 @@ Este documento combina lo encontrado en el código (spec + diseño actual) y las
 
 - Proyecto: OrganizaT — Backend (FastAPI) con Supabase (Auth + PostgreSQL). <!-- inferido del código -->
 - Estado actual: API funcional con módulos: Auth, Tags, Tasks, Notes, Events, Reminders, Relations. RLS en la BD existe pero actualmente desactivado en el entorno de desarrollo. <!-- inferido del código --> <!-- confirmado por Andres -->
-- Deploy objetivo: Vercel (configurado con `main.py` como entry). <!-- inferido del código -->
-- Acción solicitada ahora: actualizar documentación en `development`, verificar que los cambios sean solo documentales, luego merge a `production`. <!-- confirmado por Andres -->
+- Deploy objetivo actual: Vercel (configurado con `main.py` como entry). <!-- inferido del código -->
+- Deploy alternativo: Docker + Kubernetes con Helm y Minikube — ver CR-001 (✅ completado). <!-- CR-001 -->
+- Ramas de infra: `v_docker_dev` → `v_docker_prod` (merge pendiente). <!-- CR-001 -->
 
 ---
 
@@ -56,6 +59,27 @@ Este documento combina lo encontrado en el código (spec + diseño actual) y las
    - Evidencia: `database.txt` menciona pendiente check `(task_id IS NOT NULL) XOR (event_id IS NOT NULL)`. Migración pendiente. <!-- inferido del código -->
    - Mitigación: aplicar migración que agregue el constraint en staging, validar con tests de integridad.
 
+9. Secrets expuestos en Helm values o repo (Alto — CR-001)
+   - Impacto: `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` nunca deben estar en `values.yaml` ni commiteados en el repo.
+   - Evidencia: nueva infra Docker/K8s requiere K8s Secrets para inyectar credenciales. <!-- CR-001 -->
+   - Mitigación: usar K8s Secrets separados al instalar el chart; agregar entradas al `.gitignore` para archivos de secrets locales.
+
+10. Imagen Docker pesada / build lento (Medio — CR-001)
+    - Impacto: builds lentos en CI y pulls lentos en K8s si la imagen no está optimizada.
+    - Mitigación: base `python:3.12-slim` + `.dockerignore` agresivo (excluir `venv/`, `.env`, `tests/`, `docs/`, `.git/`, `__pycache__/`).
+
+11. Diferencia de comportamiento Vercel (serverless) vs Docker (proceso continuo) (Medio — CR-001)
+    - Impacto: Vercel ejecuta cada request en una función efímera; Docker/K8s corre uvicorn como proceso continuo — lifecycle distinto.
+    - Mitigación: health check en `/health` como validación; smoke tests tras deploy en Minikube.
+
+12. Minikube ≠ cloud real (networking, storage, ingress diferentes) (Medio — CR-001)
+    - Impacto: lo que funciona en Minikube puede necesitar ajustes al cambiar a GKE/EKS/AKS.
+    - Mitigación: Helm chart diseñado portable; `values-prod.yaml` se agrega en CR posterior cuando se defina el proveedor cloud.
+
+13. `python-dotenv` en container sin `.env` (Bajo — CR-001)
+    - Impacto: en el contenedor Docker no existirá `.env`; `python-dotenv` intenta cargarlo pero no es bloqueante.
+    - Evidencia: `database.py` ya tiene fallback a variables de sistema operativo — no hay impacto real. <!-- inferido del código -->
+
 7. Documentación desincronizada (Bajo → Medio)
    - Impacto: archivos `rules.md` y `docs/*` pueden no reflejar el código actual (ej. events ya terminado).
    - Evidencia: `events` ya se considera terminado en código pero `rules.md` apuntaba a refactorización; commits recientes añadieron `docs/ARCHITECTURE.md` y `docs/SPECS.md`. <!-- inferido del código --> <!-- confirmado por Andres -->
@@ -75,6 +99,8 @@ Este documento combina lo encontrado en el código (spec + diseño actual) y las
 - Responsable de QA para la activación de RLS y validación de políticas: ¿quién hará la verificación final? <!-- TODO: verificar -->
 - Proceso de rollback para creación de usuarios cuando la creación del profile falla: ¿prefieren compensating action (borrar auth user) o aceptar usuarios huérfanos y arreglar con job? <!-- TODO: verificar -->
 - Cobertura de tests: falta un resumen de qué pruebas end-to-end se ejecutarán antes del merge a production. <!-- TODO: verificar -->
+- **CR-001** — Proveedor cloud final para K8s (GKE, EKS, AKS, DigitalOcean, etc.) aún por definir — se documenta en CR posterior. <!-- TODO: verificar -->
+- **CR-001** — Confirmar si se necesita Ingress controller en Minikube local (nginx-ingress addon) o basta con port-forward para pruebas. <!-- TODO: verificar -->
 
 ---
 
@@ -133,9 +159,17 @@ Prioridad baja:
 
 ---
 
-## 9. Conclusión
+## 9. Change Requests aplicados a este blueprint
 
-El sistema está funcional y bien organizado. Los principales bloqueos para una promoción segura a production son operativos y de seguridad (RLS, secrets, CORS, worker para reminders). Si quieres, puedo:
+| CR | Tipo | Descripción | Estado |
+|----|------|-------------|--------|
+| [CR-001](changes/CR-001-docker-kubernetes.md) | 🔴 LARGE | Contenerización Docker + Deploy Kubernetes (Helm + Minikube) | 🔄 En progreso |
+
+---
+
+## 10. Conclusión
+
+El sistema está funcional y bien organizado. Los principales bloqueos para una promoción segura a production son operativos y de seguridad (RLS, secrets, CORS, worker para reminders). En paralelo, se está implementando la infraestructura Docker + Kubernetes (CR-001) en las ramas `v_docker_dev` / `v_docker_prod`. Si quieres, puedo:
 
 - Generar el PR-ready checklist y el mensaje de PR para la merge de docs a `production`.
 - Añadir entradas concretas a `tasks.md` para cada mitigación (priorizadas).
