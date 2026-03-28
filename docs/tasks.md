@@ -55,6 +55,40 @@
 
 ---
 
+## 🔄 Tasks GitHub Actions CI (CR-002)
+> Nuevas tasks derivadas del CR-002 — integración de pipelines CI con GitHub Actions.
+> Ver detalle completo en `docs/changes/CR-002-github-actions-ci.md`.
+
+- [ ] **TASK-016** — Crear `tests/test_integration_v1.py` con pytest
+  - **Estado:** ⏳ pendiente
+  - **Descripción:** Tests de integración que hacen login con `TEST_EMAIL`/`TEST_PASSWORD`, ejercen los endpoints principales (health, tags, tasks, notes, events, reminders) y limpian los datos creados en teardown.
+  - **Archivos involucrados:** `tests/test_integration_v1.py`, `requirements.txt` (agregar `httpx`, `pytest`)
+  - **Depende de:** ninguna
+  - **Criterio de done:** `pytest tests/test_integration_v1.py` pasa en verde localmente con las env vars seteadas.
+
+- [ ] **TASK-017** — Crear `.github/workflows/ci-tests.yml`
+  - **Estado:** ⏳ pendiente
+  - **Descripción:** Workflow que corre en push/PR hacia `v_docker_prod`. Instala dependencias, inyecta `TEST_EMAIL`, `TEST_PASSWORD` y `BASE_URL` desde Secrets/Variables de GitHub, y ejecuta `pytest tests/test_integration_v1.py`.
+  - **Archivos involucrados:** `.github/workflows/ci-tests.yml`
+  - **Depende de:** TASK-016
+  - **Criterio de done:** Workflow aparece en GitHub Actions y muestra ✅ en push a `v_docker_prod`.
+
+- [ ] **TASK-018** — Crear `.github/workflows/ci-docker.yml`
+  - **Estado:** ⏳ pendiente
+  - **Descripción:** Workflow que corre en push/PR hacia `v_docker_prod`. Ejecuta `docker build` para verificar que la imagen compila correctamente. No hace push a un registry.
+  - **Archivos involucrados:** `.github/workflows/ci-docker.yml`
+  - **Depende de:** ninguna
+  - **Criterio de done:** Workflow aparece en GitHub Actions y muestra ✅ en push a `v_docker_prod`.
+
+- [ ] **TASK-019** — Validar CI completo en `v_docker_prod`
+  - **Estado:** ⏳ pendiente
+  - **Descripción:** Hacer un push real a `v_docker_prod` y verificar que ambos workflows (ci-tests y ci-docker) pasan en verde en GitHub Actions.
+  - **Archivos involucrados:** GitHub Actions (UI)
+  - **Depende de:** TASK-017, TASK-018
+  - **Criterio de done:** Ambos workflows muestran ✅ en la pestaña Actions del repo.
+
+---
+
 ## Orden de ejecución
 
 ### Rama: `v_docker_dev` / `v_docker_prod` — Docker + Kubernetes (CR-001)

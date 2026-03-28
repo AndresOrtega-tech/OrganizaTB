@@ -1,6 +1,6 @@
 # Blueprint: OrganizaT — estado, riesgos y ambigüedades
 
-> **Última actualización:** 2026-03-21 — CR-001 aplicado (Docker + Kubernetes)
+> **Última actualización:** 2026-03-27 — CR-002 aprobado (GitHub Actions CI: tests de integración + Docker build)
 
 <!-- inferido del código -->
 Este documento combina lo encontrado en el código (spec + diseño actual) y las decisiones/confirmaciones entregadas por el equipo. Su objetivo es servir como guía rápida de riesgos técnicos, mitigaciones y ambigüedades que requieren decisiones antes de promover cambios a producción.

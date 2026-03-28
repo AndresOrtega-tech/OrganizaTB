@@ -1,0 +1,36 @@
+name: CI — Tests de integración
+
+on:
+  push:
+    branches:
+      - v_docker_prod
+  pull_request:
+    branches:
+      - v_docker_prod
+
+jobs:
+  integration-tests:
+    name: Pytest integration tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias de test
+        run: |
+          pip install --upgrade pip
+          pip install httpx pytest
+
+      - name: Correr tests de integración
+        env:
+          BASE_URL: ${{ vars.BASE_URL }}
+          TEST_EMAIL: ${{ vars.TEST_EMAIL }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+        run: |
+          pytest tests/test_integration_v1.py -v --tb=short
