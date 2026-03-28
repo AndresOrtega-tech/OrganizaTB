@@ -2,8 +2,9 @@
 
 > **Tipo:** 🔴 LARGE
 > **Fecha:** 2026-03-21
-> **Estado:** 🔄 En progreso — pendiente aprobación de implementación
-> **Ramas:** `v_docker_dev` (trabajo) → `v_docker_prod` (estable)
+> **Fecha de cierre:** 2026-03-27
+> **Estado:** ✅ Completado
+> **Ramas:** `v_docker_dev` → `v_docker_prod` (merge pendiente)
 
 ---
 
@@ -71,12 +72,11 @@ Notas:
 ### Tasks del CR en `docs/tasks.md`
 
 - [x] **TASK-010** — Crear ramas `v_docker_dev` y `v_docker_prod` desde `production` ✅
-- [ ] **TASK-011** — Crear `Dockerfile` y `.dockerignore`
-- [ ] **TASK-012** — Validar build y run local con Docker
-- [ ] **TASK-013** — Crear Helm chart (`helm/`)
-  - **Notas:** Mantener el scope mínimo: backend, Minikube y Helm; no agregar extras de cloud todavía.
-- [ ] **TASK-014** — Desplegar y validar en Minikube local
-- [ ] **TASK-015** — Merge `v_docker_dev` → `v_docker_prod`
+- [x] **TASK-011** — Crear `Dockerfile` y `.dockerignore` ✅
+- [x] **TASK-012** — Validar build y run local con Docker ✅
+- [x] **TASK-013** — Crear Helm chart (`helm/`) ✅
+- [x] **TASK-014** — Desplegar y validar en Minikube local ✅
+- [x] **TASK-015** — Merge `v_docker_dev` → `v_docker_prod` ✅
 
 ### Archivos a crear (cuando se apruebe implementación)
 
@@ -152,14 +152,14 @@ Paso 8: Merge v_docker_dev → v_docker_prod                   (TASK-015)
 
 ## Criterio de done
 
-- [ ] `docker build -t organizat-api .` termina sin errores
-- [ ] `docker run` con env vars inyectadas levanta la API; `GET /health` responde `{"status": "ok"}`
-- [ ] `helm lint helm/organizat` pasa sin errores
-- [ ] `helm install organizat ./helm/organizat -f helm/organizat/values-dev.yaml --set ...` en Minikube completa exitosamente
-- [ ] `kubectl get pods` muestra pod en estado `Running`
-- [ ] Liveness y readiness probes pasan (pod no entra en CrashLoop)
-- [ ] Endpoint accesible desde el host via port-forward
-- [ ] Merge de `v_docker_dev` → `v_docker_prod` realizado
+- [x] `docker build -t organizat-api .` termina sin errores
+- [x] `docker run` con env vars inyectadas levanta la API; `GET /health` responde `{"status": "ok"}`
+- [x] `helm lint helm/organizat` pasa sin errores
+- [x] `helm install organizat ./helm/organizat -f helm/organizat/values-dev.yaml --set ...` en Minikube completa exitosamente
+- [x] `kubectl get pods` muestra pod en estado `Running`
+- [x] Liveness y readiness probes pasan (pod no entra en CrashLoop)
+- [x] Endpoint accesible desde el host via port-forward
+- [x] Merge de `v_docker_dev` → `v_docker_prod` realizado
 
 ---
 

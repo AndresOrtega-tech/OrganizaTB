@@ -12,8 +12,8 @@ Este documento combina lo encontrado en el código (spec + diseño actual) y las
 - Proyecto: OrganizaT — Backend (FastAPI) con Supabase (Auth + PostgreSQL). <!-- inferido del código -->
 - Estado actual: API funcional con módulos: Auth, Tags, Tasks, Notes, Events, Reminders, Relations. RLS en la BD existe pero actualmente desactivado en el entorno de desarrollo. <!-- inferido del código --> <!-- confirmado por Andres -->
 - Deploy objetivo actual: Vercel (configurado con `main.py` como entry). <!-- inferido del código -->
-- Deploy alternativo en progreso: Docker + Kubernetes con Helm y Minikube — ver CR-001. <!-- CR-001 -->
-- Ramas de infra: `v_docker_dev` (trabajo) → `v_docker_prod` (estable). <!-- CR-001 -->
+- Deploy alternativo: Docker + Kubernetes con Helm y Minikube — ver CR-001 (✅ completado). <!-- CR-001 -->
+- Ramas de infra: `v_docker_dev` → `v_docker_prod` (merge pendiente). <!-- CR-001 -->
 
 ---
 

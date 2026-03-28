@@ -1,7 +1,7 @@
 # Design — OrganizaT API
 <!-- inferido del código -->
 
-Última actualización: 2026-03-21 (CR-001: Docker + Kubernetes)
+Última actualización: 2026-03-27 (CR-001: Docker + Kubernetes — completado)
 
 Resumen
 -------
@@ -18,7 +18,7 @@ Arquitectura: Monolito backend en Python ejecutándose como una aplicación Fast
 
 Deploy targets:
 - **Vercel** (actual): `@vercel/python` con `main.py` como entrypoint — serverless.
-- **Docker + Kubernetes** (CR-001 en progreso): imagen Docker corriendo uvicorn, orquestada con Helm en Kubernetes, validada localmente con Minikube. <!-- CR-001 -->
+- **Docker + Kubernetes** (CR-001 ✅ completado): imagen Docker corriendo uvicorn, orquestada con Helm en Kubernetes, validada localmente con Minikube. <!-- CR-001 -->
 <!-- inferido del código -->
 
 Arquitectura (vista simplificada)
@@ -315,8 +315,7 @@ Notas finales
 - Events está terminado y el `rules.md` anterior está desactualizado. <!-- confirmado por Andres -->
 - `improvement_insights` se deja fuera por ahora según indicación. <!-- confirmado por Andres -->
 - Worker de notificaciones está planeado pero no implementado. <!-- confirmado por Andres -->
-- Deploy Docker + Kubernetes en progreso (CR-001): ramas `v_docker_dev` y `v_docker_prod` creadas. <!-- CR-001 -->
-  Pendiente aprobación de implementación antes de tocar archivos de código/infra.
+- Deploy Docker + Kubernetes completado (CR-001) ✅: Dockerfile, Helm chart, validado en Minikube. <!-- CR-001 -->
 
 Documentos relacionados
 ----------------------

@@ -127,7 +127,7 @@ Proveer una API centralizada y segura que soporte:
 
 | CR | Tipo | Descripción | Estado |
 |----|------|-------------|--------|
-| [CR-001](changes/CR-001-docker-kubernetes.md) | 🔴 LARGE | Contenerización Docker + Deploy Kubernetes (Helm + Minikube) | 🔄 En progreso |
+| [CR-001](changes/CR-001-docker-kubernetes.md) | 🔴 LARGE | Contenerización Docker + Deploy Kubernetes (Helm + Minikube) | ✅ Completado |
 
 ---
 
