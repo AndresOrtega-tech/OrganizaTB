@@ -38,6 +38,7 @@ origins = [
     "http://localhost:3000",
     "http://localhost:8081",
     "https://web-app-organiza-t.vercel.app",
+    "https://web-app-organiza-t-git-development-andresortegatechs-projects.vercel.app/"
 ]
 
 app.add_middleware(
