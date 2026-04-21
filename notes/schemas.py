@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List
 from datetime import datetime
+from typing import List, Optional
+
+from pydantic import BaseModel, Field
 
 try:
     from backend.tags.schemas import TagSummary
@@ -9,9 +10,13 @@ except ImportError:
 
 
 class NoteBase(BaseModel):
-    title: Optional[str] = Field(None, description="Título de la nota")
-    content: Optional[str] = Field(None, description="Contenido de la nota", max_length=800)
-    summary: Optional[str] = Field(None, description="Resumen de la nota generado por IA o manual", max_length=500)
+    title: Optional[str] = Field(None, max_length=80, description="Título de la nota")
+    content: Optional[str] = Field(
+        None, description="Contenido de la nota", max_length=800
+    )
+    summary: Optional[str] = Field(
+        None, description="Resumen de la nota generado por IA o manual", max_length=500
+    )
     is_archived: bool = Field(False, description="Indica si la nota está archivada")
 
 
@@ -21,7 +26,7 @@ class NoteCreate(NoteBase):
 
 
 class NoteUpdate(BaseModel):
-    title: Optional[str] = None
+    title: Optional[str] = Field(None, max_length=80)
     content: Optional[str] = Field(None, max_length=800)
     summary: Optional[str] = Field(None, max_length=500)
     is_archived: Optional[bool] = None
@@ -53,7 +58,9 @@ class NoteResponse(NoteBase):
     media_url: Optional[str]
     created_at: datetime
     updated_at: datetime
-    tags: List[TagSummary] = Field(default=[], description="Etiquetas vinculadas a la nota")
+    tags: List[TagSummary] = Field(
+        default=[], description="Etiquetas vinculadas a la nota"
+    )
 
     class Config:
         from_attributes = True

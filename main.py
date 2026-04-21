@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 from database import supabase
 from auth.api import router as auth_router, users_router
+from auth.dependencies import get_current_user
 from tags.api import router as tags_router
 from tasks.api import router as tasks_router
 from notes.api import router as notes_router
@@ -36,7 +37,8 @@ origins = [
     "http://localhost",
     "http://localhost:3000",
     "http://localhost:8081",
-    "*",
+    "https://web-app-organiza-t.vercel.app",
+    "https://web-app-organiza-t-git-development-andresortegatechs-projects.vercel.app/"
 ]
 
 app.add_middleware(
@@ -67,27 +69,26 @@ def health_check():
         return {
             "status": "ok",
             "supabase_connected": True if supabase else False,
-            "supabase_url": str(supabase.supabase_url) if supabase else None
         }
     except Exception as e:
         logger.error(f"Health check failed: {e}")
-        return {"status": "error", "detail": str(e)}
+        return {"status": "error"}
+
 
 @app.get("/tables", tags=["Health"])
-def list_tables():
+def list_tables(user=Depends(get_current_user)):
     if supabase is None:
         return {
             "status": "error",
-            "message": "Supabase no está configurado. Revisa las variables SUPABASE_URL y SUPABASE_ANON_KEY."
+            "message": "Supabase no está configurado."
         }
 
     try:
         response = supabase.rpc("get_tables", {}).execute()
         return {"tables": response.data}
     except Exception as e:
+        logger.error(f"Error listing tables: {e}")
         return {
             "status": "error",
-            "message": "No se pudieron listar las tablas. Asegúrate de haber creado la función RPC en Supabase.",
-            "details": str(e),
-            "solution": "Ejecuta el SQL para crear get_tables()"
+            "message": "No se pudieron listar las tablas."
         }

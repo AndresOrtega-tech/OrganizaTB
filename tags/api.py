@@ -52,7 +52,7 @@ async def create_tag(tag: TagCreate, user=Depends(get_current_user)):
         raise he
     except Exception as e:
         logger.error(f"Error creando etiqueta: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 @router.get("/", response_model=List[TagResponse], summary="Listar todas las etiquetas del usuario")
 async def list_tags(user=Depends(get_current_user)):
@@ -65,7 +65,7 @@ async def list_tags(user=Depends(get_current_user)):
         return response.data
     except Exception as e:
         logger.error(f"Error listando etiquetas: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 @router.patch("/{tag_id}", response_model=TagResponse, summary="Actualizar una etiqueta")
 async def update_tag(tag_id: str, tag_update: TagUpdate, user=Depends(get_current_user)):
@@ -99,7 +99,7 @@ async def update_tag(tag_id: str, tag_update: TagUpdate, user=Depends(get_curren
         raise he
     except Exception as e:
         logger.error(f"Error actualizando etiqueta: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")
 
 @router.delete("/{tag_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Eliminar una etiqueta")
 async def delete_tag(tag_id: str, user=Depends(get_current_user)):
@@ -122,4 +122,4 @@ async def delete_tag(tag_id: str, user=Depends(get_current_user)):
         raise he
     except Exception as e:
         logger.error(f"Error eliminando etiqueta: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Error interno del servidor")

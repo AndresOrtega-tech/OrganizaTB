@@ -1,10 +1,10 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Literal
 from datetime import datetime
 
 class ReminderBase(BaseModel):
     remind_at: datetime
-    status: str = "pending"
+    status: Literal["pending", "sent", "failed"] = "pending"
 
 class ReminderResponse(ReminderBase):
     id: str
@@ -22,4 +22,4 @@ class ReminderResponse(ReminderBase):
 
 class ReminderUpdate(BaseModel):
     remind_at: Optional[datetime] = None
-    status: Optional[str] = None
+    status: Optional[Literal["pending", "sent", "failed"]] = None
