@@ -214,7 +214,7 @@ Ambigüedades / TODOs
 --------------------
 - <!-- TODO: verificar --> Confirmar en staging si RLS está activado o no y si al activarlo las policies actuales funcionan con el service role.
 - <!-- TODO: verificar --> Confirmar la lista final de environment variables secretas que no están en `.env.example`.
-- <!-- TODO: verificar --> Revisar que la nueva documentación añadida en `docs/ARCHITECTURE.md`, `docs/SPECS.md` esté alineada con el código actual (parece que se añadió en development).
+- <!-- TODO: verificar --> Revisar que `docs/design.md` y `docs/spec.md` estén alineados con el código actual.
 - <!-- TODO: verificar --> Agregar worker/arquitectura de background jobs para recordatorios y definir donde será desplegado.
 - <!-- TODO: verificar --> Añadir `icon` a `TagUpdate` si se quiere permitir edición desde UI (pendiente detectado en rules).
 
@@ -227,7 +227,7 @@ Notas finales
 Documentos relacionados
 ----------------------
 - `README.md` — guía de inicio rápido y variables de entorno. <!-- inferido del código -->
-- `docs/ARCHITECTURE.md`, `docs/SPECS.md`, `docs/CHANGELOG.md` — versiones en `development` que deben revisarse antes de merge. <!-- inferido del código -->
+- `docs/design.md`, `docs/spec.md`, `docs/blueprint.md` — revisar antes de merge; historial en Git si no hay changelog dedicado. <!-- inferido del código -->
 
 --------------------------------------------------------------------------------
 Fin del documento

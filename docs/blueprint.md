@@ -58,7 +58,7 @@ Este documento combina lo encontrado en el código (spec + diseño actual) y las
 
 7. Documentación desincronizada (Bajo → Medio)
    - Impacto: archivos `rules.md` y `docs/*` pueden no reflejar el código actual (ej. events ya terminado).
-   - Evidencia: `events` ya se considera terminado en código pero `rules.md` apuntaba a refactorización; commits recientes añadieron `docs/ARCHITECTURE.md` y `docs/SPECS.md`. <!-- inferido del código --> <!-- confirmado por Andres -->
+   - Evidencia: `events` ya se considera terminado en código pero `rules.md` apuntaba a refactorización; documentación consolidada en `docs/spec.md` y `docs/design.md`. <!-- inferido del código --> <!-- confirmado por Andres -->
    - Mitigación: sincronizar docs, conservar changelog y exigir PRs con docs actualizadas.
 
 8. Posible exposición de información por health endpoint (Bajo → Medio)
@@ -96,7 +96,7 @@ Prioridad media:
 
 Prioridad baja:
 1. Completar `TagUpdate` para exponer `icon` si se desea editar desde API (hay inconsistencia entre schema y DB). <!-- inferido del código -->
-2. Revisar y consolidar `docs/ARCHITECTURE.md` y `docs/SPECS.md` con `rules.md` para evitar duplicidad.
+2. Revisar y consolidar `docs/design.md` y `docs/spec.md` con `rules.md` para evitar duplicidad.
 
 ---
 

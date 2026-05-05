@@ -91,7 +91,7 @@
   - **Criterio de done:** Suite e2e en CI que pasa contra ambiente de pruebas.
 
 - [ ] **TASK-006** — Revisar y consolidar documentación en `docs/`
-  - **Descripción:** Alinear `README.md` con `docs/SPECS.md`, `docs/ARCHITECTURE.md` y `docs/CHANGELOG.md`. Generar `project-brief.md`, `spec.md`, `design.md`, `blueprint.md` (este workflow).
+  - **Descripción:** Alinear `README.md` con `docs/spec.md`, `docs/design.md` y el resto de `docs/` (incl. decisión sobre `CHANGELOG.md` o historial solo en Git). Los artefactos `project-brief.md`, `spec.md`, `design.md`, `blueprint.md` ya existen.
   - **Archivos involucrados:** `README.md`, `docs/*.md`
   - **Depende de:** Validación de que no hay cambios funcionales en el branch.
   - **Criterio de done:** Docs actualizadas en `development`; PR listo para merge.

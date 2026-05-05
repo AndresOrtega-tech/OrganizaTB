@@ -70,7 +70,7 @@ Proveer una API centralizada y segura que soporte:
   - `development` — rama activa de trabajo (últimos docs y cambios del README están en `development`).
   - `production` — rama estable.
 - Diferencias observadas:
-  - `development` tiene commits/documentación añadida (README actualizado, `docs/ARCHITECTURE.md`, `docs/SPECS.md`, `docs/CHANGELOG.md`) y la eliminación de ciertos workflows locales. <!-- inferido del código -->
+  - `development` tiene commits/documentación añadida (README, `docs/spec.md`, `docs/design.md`, etc.) y la eliminación de ciertos workflows locales. <!-- inferido del código -->
   - Confirmado: no hay cambios funcionales en `development` respecto a `production` — los cambios pendientes son documentación. <!-- confirmado por Andres -->
 
 ## Variables de entorno requeridas
@@ -96,9 +96,9 @@ Proveer una API centralizada y segura que soporte:
 ## Archivo(s) de documentación y ubicación
 - Este brief: `docs/project-brief.md` (actual).
 - Otros docs generados/actualizados en `docs/`:
-  - `docs/ARCHITECTURE.md` <!-- inferido del código -->
-  - `docs/SPECS.md` <!-- inferido del código -->
-  - `docs/CHANGELOG.md` <!-- inferido del código -->
+  - `docs/design.md` (arquitectura / diseño técnico) <!-- inferido del código -->
+  - `docs/spec.md` (especificación de API) <!-- inferido del código -->
+  - Historial de cambios: Git (no hay `docs/CHANGELOG.md` en el repo) <!-- inferido del código -->
 - README principal actualizado en `README.md`. <!-- inferido del código -->
 
 ## Acciones solicitadas / procedimiento para merge (según tu flujo)
